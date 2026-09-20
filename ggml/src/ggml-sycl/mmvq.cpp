@@ -1238,6 +1238,13 @@ static void mul_mat_vec_q1_0_q8_1_sycl(const void * vx, const void * vy,
     });
 }
 
+static __dpct_inline__ float vec_dot_ptq1_0_q8_1_full(
+        const void * vbq, const block_q8_1 * y, const int &) {
+    return vec_dot_ptq1_0_q8_1(vbq, y, 0) +
+           vec_dot_ptq1_0_q8_1(vbq, y, 1) +
+           vec_dot_ptq1_0_q8_1(vbq, y, 2) +
+           vec_dot_ptq1_0_q8_1(vbq, y, 3);
+}
 static void mul_mat_vec_ptq1_0_q8_1_sycl(const void * vx, const void * vy,
                                          float * dst, const int ncols,
                                          const int nrows, dpct::queue_ptr stream) {
@@ -1248,8 +1255,8 @@ static void mul_mat_vec_ptq1_0_q8_1_sycl(const void * vx, const void * vy,
     stream->submit([&](sycl::handler & cgh) {
         cgh.parallel_for(sycl::nd_range<3>(block_nums * block_dims, block_dims),
             [=](sycl::nd_item<3> item_ct1) [[sycl::reqd_sub_group_size(WARP_SIZE)]] {
-                mul_mat_vec_q<QK_PTQ1_0, QI_PTQ1_0, block_ptq1_0,
-                              VDR_PTQ1_0_Q8_1_MMVQ, vec_dot_ptq1_0_q8_1>(
+                mul_mat_vec_q<QK_PTQ1_0, 1, block_ptq1_0,
+                              1, vec_dot_ptq1_0_q8_1_full>(
                     vx, vy, dst, ncols, nrows, item_ct1);
             });
     });

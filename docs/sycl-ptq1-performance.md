@@ -78,3 +78,16 @@ Samples were 11.2458, 11.2402, and 11.2395 tokens/s; average 11.241808.
 The source is committed as `f8153aa3e9e634620a6198fe619f7f05227d65de`.
 This remains below the 30 tokens/s target and has no full-context TG1024
 measurement yet.
+
+## One-lane full-block candidate
+
+For single-column TG dispatch, the PTQ1 launcher now uses one lane per full
+128-value block (`QI=1`, `VDR=1`) and sums four explicit 32-value dot calls.
+The multi-column path is unchanged. The candidate passed 39/39 SYCL0 PTQ1
+cases including n=512.
+
+TG128 run: `build-sycl-ptq1/bench-bonsai2-sycl/20260921-082617-efab95f7/`,
+with samples 18.0495, 18.0735, and 18.0308 tokens/s; average 18.051252.
+The preceding masked decoder TG1024 run completed successfully at 11.157880
+tokens/s in `20260921-081806-eb3d6782/`. These remain short benchmark
+measurements and below the 30 tokens/s target.
