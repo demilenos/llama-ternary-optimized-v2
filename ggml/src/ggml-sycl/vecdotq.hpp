@@ -375,13 +375,27 @@ static __dpct_inline__ int ptq1_trit(const block_ptq1_0 * b, const int pos) {
 
 // Pack four consecutive PTQ1 trits as signed int8 lanes for one dp4a.
 static __dpct_inline__ int ptq1_pack4(const block_ptq1_0 * b, const int pos) {
+    static constexpr uint32_t pow3[5] = { 1u, 3u, 9u, 27u, 81u };
+    if (pos < 120) {
+        const int q = pos < 80 ? pos : pos - 80;
+        const int word = pos < 80 ? (q % 16) / 4 : 4 + (q % 8) / 4;
+        const uint32_t raw = static_cast<uint32_t>(get_int_from_uint8_aligned(b->qs, word));
+        const uint32_t p = pow3[pos < 80 ? pos / 16 : q / 8];
+        constexpr uint32_t M = 0x00ff00ffu;
+        const uint32_t lo = ((raw & M) * p) & M;
+        const uint32_t hi = (((raw >> 8) & M) * p) & M;
+        const uint32_t digits = (((lo * 3u) >> 8) & M) | ((hi * 3u) & 0xff00ff00u);
+        return static_cast<int32_t>((digits + 0x7f7f7f7fu) ^ 0x80808080u);
+    }
     const int8_t x0 = static_cast<int8_t>(ptq1_trit(b, pos + 0));
     const int8_t x1 = static_cast<int8_t>(ptq1_trit(b, pos + 1));
     const int8_t x2 = static_cast<int8_t>(ptq1_trit(b, pos + 2));
     const int8_t x3 = static_cast<int8_t>(ptq1_trit(b, pos + 3));
     return (static_cast<uint8_t>(x0) << 0) | (static_cast<uint8_t>(x1) << 8) |
            (static_cast<uint8_t>(x2) << 16) | (static_cast<uint8_t>(x3) << 24);
-}static __dpct_inline__ float
+}
+
+static __dpct_inline__ float
 vec_dot_ptq1_0_q8_1(const void *__restrict__ vbq,
                     const block_q8_1 *__restrict__ bq8_1, const int & iqs) {
     const block_ptq1_0 * b = static_cast<const block_ptq1_0 *>(vbq);
@@ -392,7 +406,8 @@ vec_dot_ptq1_0_q8_1(const void *__restrict__ vbq,
         const int vi = ptq1_pack4(b, iqs * 32 + 4 * j);
         const int ui = get_int_from_int8_aligned(y->qs, j);
         sumi = dpct::dp4a(vi, ui, sumi);
-    }    return static_cast<float>(b->d) * static_cast<float>(y->ds[0]) * static_cast<float>(sumi);
+    }
+    return static_cast<float>(b->d) * static_cast<float>(y->ds[0]) * static_cast<float>(sumi);
 }
 // VDR = vec dot ratio, how many contiguous integers each thread processes when the vec dot kernel is called
 // MMVQ = mul_mat_vec_q, MMQ = mul_mat_q
