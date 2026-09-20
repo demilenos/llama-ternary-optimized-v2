@@ -100,3 +100,15 @@ PTQ1 cases, but neither improved TG128: Y=4 averaged 17.990086 tokens/s
 (run `20260921-083605-1733e9b9`) and Y=8 averaged 17.931614 tokens/s
 (run `20260921-083926-d45b733b`). The selected Y=1 result remains 18.051252
 tokens/s, so the source was restored without a tuning commit.
+
+## Final selected f65354d evidence
+
+The selected one-lane full-block implementation completed the long TG1024
+run successfully: samples 17.8395, 17.8232, and 17.8287 tokens/s; average
+17.830466, standard deviation 0.008279. Artifacts are in
+`build-sycl-ptq1/bench-bonsai2-sycl/20260921-084226-e80b57e4/`.
+
+A current f65354d server with `--reasoning off`, `-ngl 99`, and the Bonsai2
+PTQ1 model answered the fixed request `What is 2 + 2? Answer with only the
+number.` with content `4` and finish reason `stop`. The preserved response is
+`build-sycl-ptq1/quality/sycl-quality-response-final.json`.
