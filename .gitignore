@@ -1,0 +1,10 @@
+build-sycl-ptq1/
+build*/
+*.gguf
+*.bin
+*.dll
+*.exe
+*.log
+models/*
+!models/.gitkeep
+
