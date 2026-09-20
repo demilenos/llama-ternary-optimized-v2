@@ -91,3 +91,12 @@ with samples 18.0495, 18.0735, and 18.0308 tokens/s; average 18.051252.
 The preceding masked decoder TG1024 run completed successfully at 11.157880
 tokens/s in `20260921-081806-eb3d6782/`. These remain short benchmark
 measurements and below the 30 tokens/s target.
+
+## Workgroup Y tuning result
+
+The one-lane full-block path was tested with local workgroup Y=4 and Y=8,
+leaving Y=1 as the selected baseline. Both candidates passed 39/39 SYCL0
+PTQ1 cases, but neither improved TG128: Y=4 averaged 17.990086 tokens/s
+(run `20260921-083605-1733e9b9`) and Y=8 averaged 17.931614 tokens/s
+(run `20260921-083926-d45b733b`). The selected Y=1 result remains 18.051252
+tokens/s, so the source was restored without a tuning commit.
