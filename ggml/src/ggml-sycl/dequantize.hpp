@@ -93,6 +93,33 @@ static __dpct_inline__ void dequantize_q4_0_reorder(const void *d_ptr, const int
 #endif // GGML_SYCL_F16
 }
 
+static __dpct_inline__ int ptq1_trit_dequant(const block_ptq1_0 * b, const int pos) {
+    static constexpr uint8_t pow3[5] = { 1, 3, 9, 27, 81 };
+    uint8_t byte;
+    int digit;
+    if (pos < 80) {
+        digit = pos / 16;
+        byte = b->qs[pos % 16];
+    } else if (pos < 120) {
+        const int q = pos - 80;
+        digit = q / 8;
+        byte = b->qs[16 + q % 8];
+    } else {
+        const int q = pos - 120;
+        digit = q / 2;
+        byte = b->qh[q % 2];
+    }
+    const uint8_t q = static_cast<uint8_t>(byte * pow3[digit]);
+    return (static_cast<int>(q) * 3 >> 8) - 1;
+}
+
+static __dpct_inline__ void dequantize_ptq1_0(const void *vx, const int64_t ib,
+                                              const int iqs, dfloat2 &v) {
+    const block_ptq1_0 * x = static_cast<const block_ptq1_0 *>(vx);
+    const dfloat d = x[ib].d;
+    v.x() = ptq1_trit_dequant(&x[ib], iqs + 0) * d;
+    v.y() = ptq1_trit_dequant(&x[ib], iqs + 1) * d;
+}
 static __dpct_inline__ void dequantize_q1_0_reorder(const void *d_ptr, const int64_t ib, const void *qs,
                                             const int iqs, dfloat2 &v) {
     // Q1_0 reorder layout: scale values followed by quantized bits

@@ -344,6 +344,47 @@ vec_dot_q1_0_q8_1(const void *__restrict__ vbq,
     return d1 * bq8_1_chunk->ds[0] * sumi;
 }
 
+#define VDR_PTQ1_0_Q8_1_MMVQ 1
+#define VDR_PTQ1_0_Q8_1_MMQ  4
+
+static __dpct_inline__ int ptq1_trit(const block_ptq1_0 * b, const int pos) {
+    static constexpr uint8_t pow3[5] = { 1, 3, 9, 27, 81 };
+    uint8_t byte;
+    int digit;
+    if (pos < 80) {
+        const int nn = pos / 16;
+        const int m  = pos % 16;
+        byte = b->qs[m];
+        digit = nn;
+    } else if (pos < 120) {
+        const int q = pos - 80;
+        const int nn = q / 8;
+        const int m  = q % 8;
+        byte = b->qs[16 + m];
+        digit = nn;
+    } else {
+        const int q = pos - 120;
+        const int nn = q / 2;
+        const int m  = q % 2;
+        byte = b->qh[m];
+        digit = nn;
+    }
+    const uint8_t q = static_cast<uint8_t>(byte * pow3[digit]);
+    return (static_cast<int>(q) * 3 >> 8) - 1;
+}
+
+static __dpct_inline__ float
+vec_dot_ptq1_0_q8_1(const void *__restrict__ vbq,
+                    const block_q8_1 *__restrict__ bq8_1, const int & iqs) {
+    const block_ptq1_0 * b = static_cast<const block_ptq1_0 *>(vbq);
+    const block_q8_1 * y = bq8_1 + iqs;
+    int sumi = 0;
+#pragma unroll
+    for (int j = 0; j < 32; ++j) {
+        sumi += ptq1_trit(b, iqs * 32 + j) * static_cast<int>(y->qs[j]);
+    }
+    return static_cast<float>(b->d) * static_cast<float>(y->ds[0]) * static_cast<float>(sumi);
+}
 // VDR = vec dot ratio, how many contiguous integers each thread processes when the vec dot kernel is called
 // MMVQ = mul_mat_vec_q, MMQ = mul_mat_q
 
