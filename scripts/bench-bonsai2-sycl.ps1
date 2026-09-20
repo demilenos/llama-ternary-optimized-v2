@@ -5,6 +5,8 @@ param(
     [string] $DeviceName = 'SYCL0',
     [int] $Repeats = 3,
     [int] $TimeoutSeconds = 0,
+    [ValidateSet('pp512', 'tg128', 'tg1024')]
+    [string[]] $CaseName = @('pp512', 'tg128', 'tg1024'),
     [switch] $DryRun
 )
 
@@ -68,6 +70,8 @@ $cases = @(
     [pscustomobject]@{ Name = 'tg128'; Prompt = 0; Generate = 128 }
     [pscustomobject]@{ Name = 'tg1024'; Prompt = 0; Generate = 1024 }
 )
+
+$cases = @($cases | Where-Object { $CaseName -contains $_.Name })
 
 $results = @()
 foreach ($case in $cases) {

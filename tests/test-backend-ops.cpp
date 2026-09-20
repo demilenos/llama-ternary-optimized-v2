@@ -9316,6 +9316,8 @@ static std::vector<std::unique_ptr<test_case>> make_test_cases_eval() {
             //test_cases.emplace_back(new test_mul_mat(type_a,    GGML_TYPE_F32, 19,  i, 33*256, { 1,  1}, {1, 1}));
         }
     }
+    // PTQ1 prefill-width coverage: exercise the multi-column SYCL conversion/GEMM path.
+    test_cases.emplace_back(new test_mul_mat(GGML_TYPE_PTQ1_0, GGML_TYPE_F32, 16, 512, 256, {1, 1}, {1, 1}));
 
     test_cases.emplace_back(new test_mul_mat(GGML_TYPE_Q4_0, GGML_TYPE_F32, 2880, 32, 2880, {1, 1}, {1, 1}));
     test_cases.emplace_back(new test_mul_mat(GGML_TYPE_Q8_0, GGML_TYPE_F32, 2880, 32, 2880, {1, 1}, {1, 1}));

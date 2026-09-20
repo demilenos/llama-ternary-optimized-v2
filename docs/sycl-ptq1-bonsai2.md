@@ -23,8 +23,14 @@ pwsh -File scripts/run-bonsai2-sycl.ps1 `
 ```
 
 Use `http://127.0.0.1:9941/health` and the OpenAI-compatible `/v1/chat/completions`
-endpoint for a smoke test. Check the server log for `SYCL` device selection and
-`offloaded` layer counts. PTQ1 kernels are not registered in `ggml-sycl` in this
-snapshot. The current build detects the Arc GPU but aborts when the first
-PTQ1 matvec reaches MMVQ (`unsupported data type=ptq1_0`). A successful
-Bonsai2 GPU run requires implementing that kernel.
+endpoint for a smoke test. The SYCL backend now includes PTQ1 MMVQ support for
+Q8_1 activations, PTQ1-to-F16/F32 conversion for prefill paths, and the
+reference-accurate trit decoder (including uint8 wrapping). CPU token embedding
+fallback remains intentional because GET_ROWS is not advertised by this
+backend.
+
+The implementation was validated with `test-backend-ops` PTQ1 MUL_MAT cases
+(38/38 on SYCL0) and a real Bonsai2 response (`4`) with `--reasoning off`,
+`-ngl 99`, and the Arc GPU selected. Use `scripts/bench-bonsai2-sycl.ps1` for
+matched PP512, TG128, and TG1024 measurements; its logs record the executable
+and backend DLL hashes. Build outputs and model weights remain outside Git.
