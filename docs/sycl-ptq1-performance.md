@@ -393,3 +393,15 @@ Evidence: `profile-ops/gdn-{raw,all}-tests.log`, `gdn-raw-diagnostic.log`,
 `20260921-130322-564907db/` (on), all under `build-sycl-ptq1`.
 Experimental DLL SHA256:
 `14E81911C18E33C70583E249792CAD268F9750F9618A701EFB8C4A16663A8029`.
+
+## Paired PTQ1 up/gate dot experiment (not adopted)
+
+Sharing each Q8 activation dword between the fused up/gate dot products
+passed 37/37 PTQ1 fused-graph CPU-reference tests. Same-DLL TG128 r3 was
+22.150293 t/s off (stddev 0.037540) and 22.118679 on (stddev 0.012763).
+No improvement was established, so the candidate was removed after saving
+exact source copies and `build-sycl-ptq1/rejected-pair-dot/experiment.patch`.
+Evidence: `profile-ops/pair-dot-tests.log`, benchmark directories
+`20260921-132026-3da5a500` (off) and `20260921-132052-bf0ba8f2` (on).
+Experimental DLL SHA256:
+`4CECC841C25DBE0385172FCABF0FD1DBAA7D05B21DF0CFFED6CA3C9FD17F101C`.
