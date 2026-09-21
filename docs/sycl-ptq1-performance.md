@@ -294,3 +294,11 @@ and `20260921-115734-88f49269/`, including exact environment metadata and
 DLL SHA256. These runs also verified the harness under Windows PowerShell
 5.1. The harness now records a fixed allowlist of relevant performance
 variables and supports both Windows PowerShell and PowerShell 7 process APIs.
+
+Fixed command-list batches did not improve the accepted configuration:
+TG128 r3 measured 20.813260 t/s for batch 16 and 22.328139 t/s for batch 64
+(stddev 0.035304 for batch 64), essentially matching the dynamic baseline.
+Both fixed-batch runs had V2 unset and immediate lists disabled. No fixed
+batch setting is recommended from this comparison. Evidence:
+`bench-bonsai2-sycl/20260921-115934-25b1102e/` and
+`bench-bonsai2-sycl/20260921-120014-8f9ef48c/` under the build directory.
