@@ -2685,6 +2685,12 @@ inline void ggml_sycl_op_mul_mat_sycl(
     bool use_fp16 = false;
 #endif
 
+    // Opt-in PTQ1 large-N oracle; resident weights remain packed.
+    static const bool ptq1_large_n_fp16 =
+        ggml_sycl_get_env("GGML_SYCL_PTQ1_LARGE_N_FP16", 0) != 0;
+    use_fp16 = use_fp16 ||
+        (ptq1_large_n_fp16 && src0->type == GGML_TYPE_PTQ1_0 && src1->type == GGML_TYPE_F32 && src1_ncols > MMVQ_MAX_BATCH_SIZE);
+
 #if GGML_SYCL_DNNL && defined(GGML_SYCL_HAS_BF16)
     // Fast path for bf16 src0
     if (src0->type == GGML_TYPE_BF16 && g_ggml_sycl_enable_dnn && ggml_is_contiguous(src0) &&

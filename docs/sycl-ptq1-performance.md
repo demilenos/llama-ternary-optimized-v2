@@ -480,3 +480,61 @@ updates source row IDs after graph construction, while `can_reuse_rs` does
 not compare the full source mapping. Slot reorder and rollback snapshots can
 change it. No state alias optimization was implemented; an explicit mapping
 invariant and graph-reuse invalidation would be required first.
+
+## PTQ1 large-N FP16 prefill (2026-09-21)
+
+`GGML_SYCL_PTQ1_LARGE_N_FP16=1` enables the existing half-operand GEMM path
+only for PTQ1 weights with F32 activations and more than eight columns.
+The existing contiguous, full-row and default-precision guards still apply.
+Weights stay packed in model memory; only temporary GEMM operands change
+from F32 to F16. Accumulation/output remain F32. This is not lossless: half
+operand rounding and overflow limits apply. The flag defaults to off and
+reads a numeric value, unlike the older presence flags above.
+
+Matched Q5_0 K/V, batch/ubatch 512, Arc A750, CPU token embedding,
+Flash Attention on, two repetitions, warmup enabled, profiling disabled:
+
+| Case | Flag off tokens/s | Flag on tokens/s | Ratio |
+|---|---:|---:|---:|
+| PP128 | 131.13 | 226.52 | 1.73 |
+| PP512 | 207.09 | 447.40 | 2.16 |
+| PP1024 | 211.16 | 472.78 | 2.24 |
+
+The same probe DLL was used for both sides:
+`CA26B1DD60266018E41C1022A762020AC9626C13DD7FAA4FA756F133E3339033`.
+PTQ1 MUL_MAT CPU-reference tests passed 40/40 with the flag off and on,
+including M32/N512/K5120. These are operation-level checks, not proof of
+long-running model correctness. The earlier persistent BBBB output remains
+an independent open incident.
+
+Evidence is under `build-sycl-ptq1/correctness-incident/`:
+`perf-off-pp-20260921-213225`, `perf-fp16-pp-20260921-213302`,
+and `ptq1-fp16-{off,on}.log`.
+
+### Rejected FA workgroup probe
+
+The temporary DG2 VEC 256-thread override passed three Q5 CPU-reference
+attention cases, but showed no end-to-end benefit. With FP16 prefill held
+on, two TG32 samples per depth gave:
+
+| Starting depth | Original 128 threads | Candidate 256 threads |
+|---|---:|---:|
+| 4096 | 19.32 | 19.31 |
+| 8192 | 16.47 | 16.48 |
+| 17001 | 12.13 | 12.11 |
+
+A diagnostic run confirmed D256 VEC dispatch for Q5. The installed SYCL
+runtime identifies A750 as intel_gpu_acm_g10. The candidate is removed;
+its patch and exact header are archived locally as `fa256-rejected.*`.
+Evidence: `perf-fp16-tg-20260921-213346`,
+`perf-both-tg-20260921-213513`, `fa-dispatch-verbose.log`.
+These fixed-depth measurements must not be compared as identical workloads
+to older Q8 cumulative server generation averages.
+
+Final-build confirmation after removing the FA candidate used DLL SHA256
+`1F33461EB45314ECC31788A06D3668FC822329F53F659962563D608C1C008DDC`.
+Reversing measurement order (on first, off second) produced PP128/512/1024
+226.68/447.22/471.41 t/s on versus 130.36/205.74/209.49 t/s off.
+The final build again passed 40/40 PTQ1 cases in each mode and 3/3 Q5
+attention cases. Evidence: `perf-fp16-pp-20260921-214820` and
+`perf-off-pp-20260921-214842` under the same incident directory.
