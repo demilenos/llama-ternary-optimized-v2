@@ -538,3 +538,28 @@ Reversing measurement order (on first, off second) produced PP128/512/1024
 The final build again passed 40/40 PTQ1 cases in each mode and 3/3 Q5
 attention cases. Evidence: `perf-fp16-pp-20260921-214820` and
 `perf-off-pp-20260921-214842` under the same incident directory.
+
+## Matched cache-history speculation comparison (2026-09-21)
+
+Fresh servers, identical fixed request bodies (12 requests), Q5/64K,
+FP16 prefill enabled, temperature 0 and fixed seed. With ngram-map-k4v
+N=10/M=10/min-hits=2, the first speculative turn increased process GPU
+shared usage from 92,348,416 to 2,183,208,960 bytes. No-spec remained at
+92,348,416 bytes throughout. Turn 3 TG was 9.23 versus 15.86 tokens/s;
+turn 10 was 9.63 versus 15.13. Both runs remained coherent and their final
+independent arithmetic request returned 42; neither reproduced BBBB.
+These are fixed synthetic tool-history requests, not a general quality test.
+
+Evidence: `nospec-fixed-20260921-215346`,
+`ngram-fixed-20260921-215632`, and `ngram-paired-results.json` under
+`build-sycl-ptq1/correctness-incident`. The two runs used the same probe
+DLL cited above. Speculation is disabled in the local server launcher
+because this workload shows a regression. This does not resolve the older
+non-speculative BBBB incident. Allocation attribution remains unproven.
+
+A follow-up M=1 probe retained shared GPU usage near 94,445,568 bytes
+but still regressed turn-10 TG to 9.69 t/s versus no-spec 15.13 t/s.
+Thus the large shared-memory jump is draft-length dependent, while
+speculation overhead remains even without that jump. Neither a full KV
+checkpoint copy nor FA scratch alone has been established as its cause.
+Evidence: `ngram-m1-fixed-20260921-220002` (same 12 fixed requests).
