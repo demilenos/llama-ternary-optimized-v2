@@ -10,7 +10,7 @@ $root = Split-Path -Parent $PSScriptRoot
 $server = Join-Path $root "build-sycl-ptq1\bin\llama-server.exe"
 if (!(Test-Path -LiteralPath $server)) { throw "Build llama-server first: $server" }
 if (!(Test-Path -LiteralPath $Model)) { throw "Model not found: $Model" }
-$env:PATH = "C:\Program Files (x86)\Intel\oneAPI\compiler\latest\bin;C:\Program Files (x86)\Intel\oneAPI\mkl\latest\redist\intel64;C:\Program Files (x86)\Intel\oneAPI\tbb\latest\redist\intel64\vc14;" + $env:PATH
+$env:PATH = "C:\Program Files (x86)\Intel\oneAPI\2026.1\bin;C:\Program Files (x86)\Intel\oneAPI\mkl\2026.1\bin;C:\Program Files (x86)\Intel\oneAPI\dnnl\2026.0\bin;C:\Program Files (x86)\Intel\oneAPI\compiler\latest\bin;C:\Program Files (x86)\Intel\oneAPI\mkl\latest\bin;C:\Program Files (x86)\Intel\oneAPI\dnnl\latest\bin;C:\Program Files (x86)\Intel\oneAPI\tbb\latest\bin;C:\Program Files (x86)\Intel\oneAPI\umf\latest\bin;C:\Program Files (x86)\Intel\oneAPI\tcm\latest\bin;C:\Program Files (x86)\Intel\oneAPI\ocloc\latest\bin;C:\Program Files (x86)\Intel\oneAPI\mkl\latest\redist\intel64;C:\Program Files (x86)\Intel\oneAPI\tbb\latest\redist\intel64\vc14;" + $env:PATH
 $env:GGML_SYCL_DEVICE = "$Device"
 $args = @("-m", $Model, "-c", "$Context", "-ngl", "$GpuLayers", "--port", "$Port", "--host", "127.0.0.1")
 Write-Host "Starting SYCL llama-server on port $Port (device $Device)"

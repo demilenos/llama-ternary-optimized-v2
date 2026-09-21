@@ -33,7 +33,16 @@ if (-not $DryRun) {
 # Match scripts/run-bonsai2-sycl.ps1: runtime oneAPI DLLs are made visible
 # without changing the caller's environment after this process exits.
 $env:PATH = @(
+    'C:\Program Files (x86)\Intel\oneAPI\2026.1\bin'
+    'C:\Program Files (x86)\Intel\oneAPI\mkl\2026.1\bin'
+    'C:\Program Files (x86)\Intel\oneAPI\dnnl\2026.0\bin'
     'C:\Program Files (x86)\Intel\oneAPI\compiler\latest\bin'
+    'C:\Program Files (x86)\Intel\oneAPI\mkl\latest\bin'
+    'C:\Program Files (x86)\Intel\oneAPI\dnnl\latest\bin'
+    'C:\Program Files (x86)\Intel\oneAPI\tbb\latest\bin'
+    'C:\Program Files (x86)\Intel\oneAPI\umf\latest\bin'
+    'C:\Program Files (x86)\Intel\oneAPI\tcm\latest\bin'
+    'C:\Program Files (x86)\Intel\oneAPI\ocloc\latest\bin'
     'C:\Program Files (x86)\Intel\oneAPI\mkl\latest\redist\intel64'
     'C:\Program Files (x86)\Intel\oneAPI\tbb\latest\redist\intel64\vc14'
     $env:PATH
