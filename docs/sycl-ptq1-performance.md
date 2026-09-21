@@ -175,3 +175,18 @@ Logs under `build-sycl-ptq1/profile-ops/`: `graph-markers-tg8.log`,
 `concat-graph-gate.log`, `graph-ab-off-tg128-r3.json`, and
 `graph-ab-on-tg128-r3.json`. Llama's separate `graphs reused` counter was not
 used as evidence of SYCL command-graph replay.
+
+## Rejected initial ESIMD PTQ1 kernel
+
+A four-workitem-per-row ESIMD kernel reused scalar packed-trit loads and
+native `esimd::dp4a`. Intel ESIMD takes the accumulator first, unlike the
+existing dpct helper; correcting that order produced 39/39 CPU-reference
+PTQ1 passes with explicit dispatch markers. However matched TG128 r3 on the
+same DLL regressed from 19.921700 t/s (stddev 0.017255, ESIMD off) to
+1.619624 t/s (stddev 0.009667, ESIMD on). The initial candidate was discarded;
+using a native dot instruction alone did not improve this kernel design.
+No TG1024 run was warranted.
+
+Evidence under `build-sycl-ptq1/profile-ops/`:
+`build-ptq1-esimd-dp4a-fix.log`, `ptq1-esimd-on-dp4a-fix.log`,
+`ptq1-esimd-off-tg128-r3.json`, and `ptq1-esimd-on-tg128-r3.json`.
