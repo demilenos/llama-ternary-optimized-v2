@@ -31,3 +31,32 @@ spans with per-iteration waits. Quantization also differs. This is a strong
 reason to require the same-harness comparison, not proof of an exact 6x
 advantage under real-model traffic. The same-size performance test case is
 retained for reproducible follow-up.
+
+## Same-harness Q32 comparison
+
+The local comparison copy now uses one activation scale per 32 values,
+float-scale quantization followed by FP16 scale rounding, ties-away rounding,
+and separate scaling of all four DPAS chunks. SG8 uses the current packed
+trit decoder/dot formula and subgroup reduction, with the probe's shared
+activation buffers. Thus it is a kernel comparison, not an exact reproduction
+of the full backend's Q8_1 buffer layout. All 10240 output rows were checked
+against CPU reference, including finite-value checks; layout tests passed.
+
+A750 driver 1.15.39183+4, M=10240/N=1/K=5120, split-K 1, warmup 5, repeats 30:
+
+| Kernel | GEMM us | Total us | p95 us | Max absolute error |
+|---|---:|---:|---:|---:|
+| Packed SG8 |52.656|69.948|78.7606|1.31130219e-6|
+| S2 baseline |421.927|442.1875|456.2814|4.76837158e-7|
+| S2 XMX8 all |281.3015|306.823|324.604|4.76837158e-7|
+
+All modes keep 11468800 resident weight bytes. XMX8 improves its own S2
+baseline, but is 4.39x slower than SG8 in total time here. A wholesale XMX
+port is therefore not justified by this experiment. Same-size layout/block
+load ideas may still be evaluated separately in the native kernel.
+
+The original probe is unchanged. Working copy:
+`build-sycl-ptq1/probe-xmx8-q32/`. Final logs and binary/source hashes are in
+`docs/ptq1-xmx8-evidence.txt`; local original-to-copy patches preserve the
+comparison implementation. This synthetic repeated-weight probe does not
+establish real-model TG or cold-memory performance.

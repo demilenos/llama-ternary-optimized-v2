@@ -1,0 +1,20 @@
+Command: --m 10240 --n 1 --k 5120 --warmup 5 --repeats 30; --modes sg8,s2 --opt baseline and --modes s2 --opt all
+build-sycl-ptq1/probe-xmx8-q32/src/bench.cpp SHA256=959801023574F8822345E6DDA3F14B1B9F074018446FA4634FE91BE428FB5ED5
+build-sycl-ptq1/probe-xmx8-q32/include/ptq1_layout.hpp SHA256=B92DDF87C4DC7C2575AED3A475522EDB58EE72EF7DF874B9D0E0A69290641F79
+build-sycl-ptq1/probe-xmx8-q32/build/ptq1-sycl-bench.exe SHA256=274657C42A70BBE14D03A2424806458DB117C51123DAD1D4C8E4E9D571C2CAB0
+
+device=Intel(R) Arc(TM) A750 Graphics
+driver=1.15.39183+4
+shape M=10240 N=1 K=5120 split_k=1 opt=baseline
+sg8 opt=baseline verified_rows=10240 verify max_abs=1.31130219e-06 max_ref=2.55861783 status=PASS
+sg8 opt=baseline split_k=1 prep_us=5.208 main_us=52.656 gemm_us=52.656 reduce_us=0 total_us=69.948 p95_us=78.7606 effective_TFLOPS=1.49907932 gemm_TFLOPS=1.9913704 resident_weight_GBps=163.9618
+s2 opt=baseline verified_rows=10240 verify max_abs=4.76837158e-07 max_ref=2.55861783 status=PASS
+s2 opt=baseline split_k=1 prep_us=5.416 main_us=421.927 gemm_us=421.927 reduce_us=0 total_us=442.1875 p95_us=456.2814 effective_TFLOPS=0.237133795 gemm_TFLOPS=0.248520716 resident_weight_GBps=25.9365088
+resident_weight_bytes=11468800 format=PTQ1_0 (28 B / 128 weights, no expanded resident buffer)
+
+device=Intel(R) Arc(TM) A750 Graphics
+driver=1.15.39183+4
+shape M=10240 N=1 K=5120 split_k=1 opt=all
+s2 opt=all verified_rows=10240 verify max_abs=4.76837158e-07 max_ref=2.55861783 status=PASS
+s2 opt=all split_k=1 prep_us=5.417 main_us=281.3015 gemm_us=281.3015 reduce_us=0 total_us=306.823 p95_us=324.604 effective_TFLOPS=0.341752737 gemm_TFLOPS=0.372758766 resident_weight_GBps=37.3792056
+resident_weight_bytes=11468800 format=PTQ1_0_XMX8 (28 B / 128 weights, no expanded resident buffer)
