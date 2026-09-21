@@ -4,6 +4,56 @@ This note records the small, reproducible `llama-bench` measurements currently
 available for the Intel Arc A750 path.  These are short benchmark cases, not a
 claim about sustained server throughput at a full context.
 
+## Current accepted configuration: BF16 WG256 (2026-09-21)
+
+The small-output BF16 GEMV now has an opt-in workgroup-per-row kernel. It keeps
+weights in BF16, accumulates in float, and adds no expanded resident weight buffer
+or global scratch. The targeted path requires subgroup size 16 and workgroups of
+256 threads; it was validated on Intel Arc A750. Other hardware is not validated.
+
+```powershell
+$env:GGML_SYCL_PTQ1_SG8='1'
+$env:GGML_SYCL_PTQ1_FFN_FUSION='1'
+$env:GGML_SYCL_FWHT_SIGNED_FUSION='1'
+$env:GGML_SYCL_SSM_CONV_SILU_FUSION='1'
+$env:GGML_SYCL_BF16_WG256='1'
+$env:GGML_SYCL_ENABLE_GRAPH='0'
+$env:GGML_SYCL_PROFILE_OPS='0'
+$env:GGML_SYCL_DEBUG='0'
+pwsh -File scripts/bench-bonsai2-sycl.ps1 -CaseName tg128
+```
+
+The five optimization flags above are presence flags: unset a flag to disable it;
+setting it to `0` still enables it. Keep rejected experimental flags unset.
+
+Same-DLL, three-sample TG128 pairs varied only BF16 WG256:
+
+| Order | OFF tokens/s | ON tokens/s |
+|---|---:|---:|
+| OFF then ON | 22.054728 +/- 0.080062 | 23.502226 +/- 0.085447 |
+| ON then OFF | 22.029632 +/- 0.141016 | 23.562303 +/- 0.042480 |
+
+This is a 6.6-7.0% matched improvement. TG1024 ON reached
+**23.067668 +/- 0.092604 tokens/s** (three samples); no same-DLL TG1024 OFF
+comparison was collected. The **30 tokens/s target remains unmet**.
+
+BF16/F32 MUL_MAT evaluation passed 151/151 cases with the flag both OFF and ON,
+including M48/N1/K5120 and a partial workgroup chunk at M47/N1/K1088.
+The M48/N1/K5120 backend microbenchmark decreased from 47.11 to 17.01 us/run.
+Three seeded server smoke prompts returned `4`, `안녕하세요!`, and `Jupiter`,
+all with normal stop. These smoke checks are not a full model-quality evaluation.
+
+With ctx4096, four server slots and Q8 K/V, logged GPU allocations were model
+5395.33 MiB (~5.6574 GB, below the 6 GB weight limit), KV 136.00 MiB,
+recurrent state 598.50 MiB and compute 138.28 MiB. CPU embeddings were 265.23 MiB.
+Whole-adapter dedicated usage peaked at 6910.61 MiB across eight samples during
+one 128-token request. Sampling has approximately one-second counter latency;
+this does not establish the load-time peak, transient peaks between samples or
+memory use at other contexts. Exact local artifact paths and binary hash are in
+[BF16 WG256 evidence](sycl-bf16-wg256-evidence.json).
+
+The sections below preserve earlier measurements and rejected experiments.
+
 ## Matched benchmark settings
 
 Both runs used the same model and settings: `Ternary-Bonsai-2-27B-PTQ1_0.gguf`,
@@ -405,3 +455,28 @@ Evidence: `profile-ops/pair-dot-tests.log`, benchmark directories
 `20260921-132026-3da5a500` (off) and `20260921-132052-bf0ba8f2` (on).
 Experimental DLL SHA256:
 `4CECC841C25DBE0385172FCABF0FD1DBAA7D05B21DF0CFFED6CA3C9FD17F101C`.
+
+## Fresh accepted-path profile after the word-transpose rejection
+
+Accepted DLL F4EB541DEA6107C24217EC898BEDFF1BA53DA302E8BC1008CBA655A68A7C5AD0,
+all four accepted flags enabled, TG8 r1 with synchronized operation profiling.
+The final four decode invocations (graphs 5-8) contain 384 BF16 projections
+of K5120/M48, accounting for 50555 us of synchronized scopes. PTQ1 fused FFN
+K5120/M17408 scopes account for 57667 us (256 scopes); down projections
+K17408/M5120 account for 47019 us (256 scopes).
+
+These are diagnostic host wait/submission-inclusive timings, not fractions
+of asynchronous token latency. Startup is excluded. BF16 already has a
+direct GEMV path; its existing launcher uses only 16 work-items per output
+row. The next bounded candidate increases cooperation per row for small-M
+BF16 matrices without changing weights or allocating an expanded buffer.
+
+Local artifacts: `profile-ops/accepted-current-profile.{json,log}` and
+`profile-ops/accepted-current-last4.csv`.
+
+The recurrent-state gather was also audited as a future candidate. A generic
+single-sequence view substitution is unsafe: `llm_graph_input_rs::set_input_rs`
+updates source row IDs after graph construction, while `can_reuse_rs` does
+not compare the full source mapping. Slot reorder and rollback snapshots can
+change it. No state alias optimization was implemented; an explicit mapping
+invariant and graph-reuse invalidation would be required first.

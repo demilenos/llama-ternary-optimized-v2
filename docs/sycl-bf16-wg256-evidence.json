@@ -1,0 +1,72 @@
+{
+  "date": "2026-09-21",
+  "device": "Intel Arc A750",
+  "dll_sha256": "1ECCFD04AC8231A067C4BC64AC96682A4A94FF5903857CD267400A233AD3DEEA",
+  "bf16_tests": {
+    "off_passed": 151,
+    "log_prefix": "build-sycl-ptq1/profile-ops/bf16-wg256-tests-",
+    "on_passed": 151
+  },
+  "micro_us": {
+    "off": 47.11,
+    "on": 17.01,
+    "shape": "M48 N1 K5120 BF16/F32"
+  },
+  "tg128": [
+    {
+      "stddev": 0.080062,
+      "mean": 22.054728,
+      "run": "20260921-143725-c4be83e8",
+      "flag": "off"
+    },
+    {
+      "stddev": 0.085447,
+      "mean": 23.502226,
+      "run": "20260921-143752-dd490a62",
+      "flag": "on"
+    },
+    {
+      "stddev": 0.04248,
+      "mean": 23.562303,
+      "run": "20260921-143852-81b48ba3",
+      "flag": "on"
+    },
+    {
+      "stddev": 0.141016,
+      "mean": 22.029632,
+      "run": "20260921-143918-881a941c",
+      "flag": "off"
+    }
+  ],
+  "tg1024": {
+    "stddev": 0.092604,
+    "matched_off": false,
+    "mean": 23.067668,
+    "run": "20260921-143945-1635928e",
+    "flag": "on"
+  },
+  "bench_root": "build-sycl-ptq1/bench-bonsai2-sycl",
+  "samples_per_bench": 3,
+  "memory": {
+    "limitation": "Sampled request interval only; not load-time or continuous peak.",
+    "weight_limit_bytes": 6000000000,
+    "artifact_root": "build-sycl-ptq1/profile-ops/memory-quality-20260921-144244",
+    "whole_adapter_peak_mib": 6910.61,
+    "recurrent_gpu_mib": 598.5,
+    "kv_gpu_mib": 136.0,
+    "sample_count": 8,
+    "model_cpu_mib": 265.23,
+    "compute_gpu_mib": 138.28,
+    "context": 4096,
+    "model_gpu_mib": 5395.33,
+    "server_slots": 4,
+    "request_tokens": 128
+  },
+  "quality_smoke": [
+    "4",
+    "안녕하세요!",
+    "Jupiter"
+  ],
+  "target_tps": 30,
+  "target_met": false
+}

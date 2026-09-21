@@ -85,7 +85,7 @@ $cases = @($cases | Where-Object { $CaseName -contains $_.Name })
 # Persist only the known performance controls; never dump the full environment.
 $runtimeEnvironment = [ordered]@{}
 foreach ($name in @(
-    'GGML_SYCL_PTQ1_SG8', 'GGML_SYCL_PTQ1_FFN_FUSION', 'GGML_SYCL_SSM_CONV_SILU_FUSION',
+    'GGML_SYCL_BF16_WG256', 'GGML_SYCL_PTQ1_SG8', 'GGML_SYCL_PTQ1_FFN_FUSION', 'GGML_SYCL_SSM_CONV_SILU_FUSION',
     'GGML_SYCL_FWHT_SIGNED_FUSION', 'GGML_SYCL_Q2_FULL64',
     'GGML_SYCL_ENABLE_FUSION', 'GGML_SYCL_ENABLE_GRAPH',
     'GGML_SYCL_PROFILE_OPS', 'GGML_SYCL_DEBUG',

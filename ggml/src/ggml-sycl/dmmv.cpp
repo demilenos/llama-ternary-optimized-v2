@@ -3,6 +3,8 @@
 #include "dequantize.hpp"
 #include "presets.hpp"
 
+#include <cstdint>
+
 #if defined(__INTEL_LLVM_COMPILER)
     #if __has_include(<sycl/ext/oneapi/bfloat16.hpp>)
         #include <sycl/ext/oneapi/bfloat16.hpp>
@@ -245,6 +247,31 @@ static void convert_mul_mat_vec_bf16_sycl(const void *vx, const dfloat *y,
     // The qk=1 kernel iterates with stride 2*GGML_SYCL_DMMV_X, so ncols must be a
     // multiple of that — not just GGML_SYCL_DMMV_X — to avoid out-of-bounds reads.
     GGML_ASSERT(ncols % (2*GGML_SYCL_DMMV_X) == 0);
+    if (getenv("GGML_SYCL_BF16_WG256") != nullptr && nrows <= 128 && ncols >= 1024) {
+        GGML_SYCL_DEBUG("[SYCL] BF16 WG256 enabled ncols=%d nrows=%d\n", ncols, nrows);
+        constexpr int workgroup_size = 256;
+        const sycl::range<1> global(static_cast<size_t>(nrows) * workgroup_size);
+        const sycl::range<1> local(workgroup_size);
+        const uint16_t * weights = static_cast<const uint16_t *>(vx);
+
+        stream->parallel_for(
+            sycl::nd_range<1>(global, local),
+            [=](sycl::nd_item<1> item) [[sycl::reqd_sub_group_size(16)]] {
+                const int row = item.get_group(0);
+                const int lane = item.get_local_id(0);
+                const uint16_t * row_weights = weights + static_cast<size_t>(row) * ncols;
+                float sum = 0.0f;
+                for (int col = lane; col < ncols; col += workgroup_size) {
+                    const uint32_t bits = static_cast<uint32_t>(row_weights[col]) << 16;
+                    sum += sycl::bit_cast<float>(bits) * static_cast<float>(y[col]);
+                }
+                const float total = sycl::reduce_over_group(item.get_group(), sum, sycl::plus<float>());
+                if (lane == 0) {
+                    dst[row] = total;
+                }
+            });
+        return;
+    }
     const int block_num_y = (nrows + GGML_SYCL_MMV_Y - 1) / GGML_SYCL_MMV_Y;
     const sycl::range<3> block_nums(1, 1, block_num_y);
     const sycl::range<3> block_dims(1, GGML_SYCL_MMV_Y, WARP_SIZE);

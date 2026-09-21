@@ -7,7 +7,7 @@ within 6 GB to leave space for context, runtime and scratch on the 8 GB GPU.
 - [Windows SYCL build instructions](docs/sycl-ptq1-bonsai2.md)
 - [Validated performance, opt-in flags and memory measurements](docs/sycl-ptq1-performance.md)
 
-The latest validated configuration reaches about 22.4 tokens/s at TG128;
+The latest validated configuration reaches about 23.5 tokens/s at TG128;
 the 30 tokens/s target has not been reached. Model files and local build
 artifacts are excluded from this repository.
 
