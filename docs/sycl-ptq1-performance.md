@@ -373,3 +373,23 @@ DLL SHA256: `C4A53CF80CECFD4D3E02214FF1FDF3A180B475D1CCE96BDA0A74976CD3C9A490`.
 Evidence: `build-sycl-ptq1/profile-ops/ssm-silu-tests-{off,on}.log` and
 `build-sycl-ptq1/bench-bonsai2-sycl/20260921-124032-ad3e606f/` (on r5),
 `20260921-124122-30df5593/` (off r5), `20260921-124227-247147a6/` (TG1024).
+
+## GDN raw-gate experiment (not adopted)
+
+A SYCL trial folded sigmoid(beta) and softplus(alpha + bias) times A into
+the GDN kernel, using the existing raw-gate contract. All 41 supported GDN
+tests passed, including five raw-gate cases with +/-1000 saturation,
+softplus threshold values, permuted Q/K/V and K=4 state snapshots.
+Rows-indexed state remained unsupported. Real Bonsai dispatch was verified.
+
+Matched TG128 r3 was 22.433840 t/s off (stddev 0.029530) and 22.475490 on
+(stddev 0.007647), only 0.19% apart. This was not judged sufficient to retain
+the added path; no long-generation, quality or memory result is claimed.
+The implementation/tests were restored after preserving exact copies and
+`build-sycl-ptq1/rejected-gdn-raw/experiment.patch`.
+
+Evidence: `profile-ops/gdn-{raw,all}-tests.log`, `gdn-raw-diagnostic.log`,
+`bench-bonsai2-sycl/20260921-130256-2ae1f2ad/` (off) and
+`20260921-130322-564907db/` (on), all under `build-sycl-ptq1`.
+Experimental DLL SHA256:
+`14E81911C18E33C70583E249792CAD268F9750F9618A701EFB8C4A16663A8029`.
