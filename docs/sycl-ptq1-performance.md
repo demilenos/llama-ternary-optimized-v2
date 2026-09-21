@@ -302,3 +302,23 @@ Both fixed-batch runs had V2 unset and immediate lists disabled. No fixed
 batch setting is recommended from this comparison. Evidence:
 `bench-bonsai2-sycl/20260921-115934-25b1102e/` and
 `bench-bonsai2-sycl/20260921-120014-8f9ef48c/` under the build directory.
+
+## Rejected signed FWHT-to-Q8 fusion
+
+A trial combined signed FWHT1024 and Q8_1 activation quantization for a
+single-consumer PTQ1 matvec. CPU-reference integration tests passed 5/5
+both off and on, including zero input, multi-token fallback and shared
+intermediate fallback. Real-model dispatch occurred at widths 6144/17408.
+However, matched TG128 r3 was 22.281162 t/s off and 22.073824 t/s on
+(0.93% slower), with SG8, FFN and signed FWHT enabled. The candidate is
+not retained; the five integration tests remain. No TG1024 or quality
+claim is made for this rejected candidate.
+
+Evidence under `build-sycl-ptq1/`: `profile-ops/fwht-q8-tests-{off,on}-final.log`,
+`bench-bonsai2-sycl/20260921-122521-75f774f4/` (off), and
+`bench-bonsai2-sycl/20260921-122559-88b5a055/` (on). Both benchmark exits
+were 0; graph/profiling were disabled and debug was unset. Experimental
+DLL SHA256: `DFBACB0A3BD1B200504147F69291270624945C4920CA83BEF4176B4F7C98CDF8`.
+The rejected implementation is archived locally as exact file copies and
+`rejected-fwht-q8/experiment.patch`. Earlier failed build/usage logs are
+not validation evidence.

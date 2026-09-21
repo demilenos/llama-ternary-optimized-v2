@@ -4758,6 +4758,47 @@ struct test_fwht_signed : public test_case {
     }
 };
 
+// Compare the complete signed rotation + quantized matmul graph to the CPU backend.
+struct test_fwht_ptq1 : public test_fwht_signed {
+    const int64_t output_rows;
+    const bool zero_input;
+
+    test_fwht_ptq1(int64_t width, int64_t output_rows, int64_t tokens = 1,
+                   bool shared = false, bool zero = false)
+        : test_fwht_signed(1024, width, tokens, GGML_TYPE_F32, shared),
+          output_rows(output_rows), zero_input(zero) {}
+
+    std::string vars() override {
+        return test_fwht_signed::vars() + "," + VARS_TO_STR2(output_rows, zero_input);
+    }
+    std::string op_desc(ggml_tensor * t) override {
+        GGML_UNUSED(t);
+        return "FWHT_PTQ1";
+    }
+    double max_nmse_err() override { return 5e-4; } // Same as test_mul_mat.
+
+    ggml_tensor * build_graph(ggml_context * ctx) override {
+        ggml_tensor * rotated = test_fwht_signed::build_graph(ctx);
+        rotated = ggml_reshape_2d(ctx, rotated, width, n_tokens);
+        ggml_tensor * weights = ggml_new_tensor_2d(ctx, GGML_TYPE_PTQ1_0, width, output_rows);
+        ggml_set_name(weights, "ptq_weights");
+        ggml_tensor * out = ggml_mul_mat(ctx, weights, rotated);
+        ggml_set_name(out, "ptq_out");
+        return out;
+    }
+    void initialize_tensors(ggml_context * ctx) override {
+        test_fwht_signed::initialize_tensors(ctx);
+        for (ggml_tensor * t = ggml_get_first_tensor(ctx); t != nullptr; t = ggml_get_next_tensor(ctx, t)) {
+            if (strcmp(t->name, "ptq_weights") == 0) {
+                init_tensor_uniform(t);
+            } else if (zero_input && strcmp(t->name, "x") == 0) {
+                std::vector<float> zeros(ggml_nelements(t), 0.0f);
+                ggml_backend_tensor_set(t, zeros.data(), 0, zeros.size() * sizeof(float));
+            }
+        }
+    }
+};
+
 static void init_mul_mat_id_tensors(ggml_context * ctx, int n_mats) {
     std::random_device rd;
     std::default_random_engine rng(rd());
@@ -9276,6 +9317,11 @@ static std::vector<std::unique_ptr<test_case>> make_test_cases_eval() {
     }
     test_cases.emplace_back(new test_fwht_signed(1024, 5120, 4, GGML_TYPE_F32, true));
     test_cases.emplace_back(new test_fwht_signed(1024, 5120, 32));
+    test_cases.emplace_back(new test_fwht_ptq1(5120, 32));
+    test_cases.emplace_back(new test_fwht_ptq1(17408, 17));
+    test_cases.emplace_back(new test_fwht_ptq1(5120, 17, 1, false, true));
+    test_cases.emplace_back(new test_fwht_ptq1(5120, 32, 4));
+    test_cases.emplace_back(new test_fwht_ptq1(5120, 32, 1, true));
     test_cases.emplace_back(new test_fwht_signed(1024, 6144, 7, GGML_TYPE_F16));
     test_cases.emplace_back(new test_fwht_signed(1024, 17408, 3));
     // Block widths above the register path's reach, plus a couple below it as controls. 4096 and
