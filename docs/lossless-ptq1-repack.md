@@ -63,3 +63,21 @@ Local evidence is under
 `build-sycl-ptq1/profile-ops/lossless-comparison/{original,q2}/`, including
 `tg128-r3.json` and `reasoning-off/response-*.json`; backend evidence is
 `build-sycl-ptq1/profile-ops/q2_0-baseline.log`.
+
+## Optional full-block Q2 single-token kernel
+
+Set `GGML_SYCL_Q2_FULL64=1` to let each lane decode a complete 64-weight
+Q2 block into signed packed bytes for DP4A. Unset the variable to use the
+existing helper (the switch tests presence, so `0` also enables it).
+Multi-column dispatch and the original PTQ1 kernel are unchanged.
+
+Forced Q2 CPU-reference tests passed 38/38. On the same DLL, TG128 r3 rose
+from 8.428174 t/s (stddev 0.007010) to 11.432572 t/s (stddev 0.009512),
+about 35.7%. The same three quality prompts passed with normal stops and
+no reasoning content. This remains slower than original PTQ1; use it only
+when evaluating the lossless Q2 derivative. It does not meet the 30 t/s goal.
+
+DLL SHA256: `404FB93D8874F7274C4E69992331848F2D8AA3F9F459045AE8934F46919F58E`.
+Evidence: `profile-ops/q2-full64-tests.log`,
+`profile-ops/q2-full64-build-final.log`, and under the Q2 comparison directory,
+`tg128-helper-r3.json`, `tg128-full64-r3.json`, and `full64-quality/`.

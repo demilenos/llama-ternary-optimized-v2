@@ -1337,11 +1337,66 @@ static void mul_mat_vec_q1_0_q8_1_sycl_switch_ncols(
     }
 }
 
+// Single-token Q2_0 path: each subgroup lane owns a complete 64-value block.
+static inline float vec_dot_q2_0_q8_1_full64(const block_q2_0 * x, const block_q8_1 * y) {
+    int sums[2] = { 0, 0 };
+#pragma unroll
+    for (int part = 0; part < 2; ++part) {
+        const uint8_t * qs = x->qs + part * 8;
+        const int8_t * q8 = y[part].qs;
+#pragma unroll
+        for (int j = 0; j < 8; ++j) {
+            const uint32_t b = qs[j];
+            const uint32_t packed = (b & 0x3u) | ((b & 0xCu) << 6) |
+                                    ((b & 0x30u) << 12) | ((b & 0xC0u) << 18);
+            const int signed_codes = (int) ((packed + 0x7F7F7F7Fu) ^ 0x80808080u);
+            sums[part] = dpct::dp4a(signed_codes, get_int_from_int8_aligned(q8, j), sums[part]);
+        }
+    }
+    const sycl::float2 ds0 = y[0].ds.convert<float, sycl::rounding_mode::automatic>();
+    const sycl::float2 ds1 = y[1].ds.convert<float, sycl::rounding_mode::automatic>();
+    return (float) x->d * (sums[0] * ds0.x() + sums[1] * ds1.x());
+}
+
+static void mul_mat_vec_q2_0_q8_1_full64_sycl(const void * vx, const void * vy,
+                                               float * dst, const int ncols,
+                                               const int nrows,
+                                               dpct::queue_ptr stream) {
+    GGML_ASSERT(ncols % QK2_0 == 0);
+    const int block_num_y = (nrows + GGML_SYCL_MMV_Y - 1) / GGML_SYCL_MMV_Y;
+    const sycl::range<3> block_nums(1, 1, block_num_y);
+    const sycl::range<3> block_dims(1, GGML_SYCL_MMV_Y, WARP_SIZE);
+    stream->submit([&](sycl::handler & cgh) {
+        cgh.parallel_for(
+            sycl::nd_range<3>(block_nums * block_dims, block_dims),
+            [=](sycl::nd_item<3> item_ct1) [[sycl::reqd_sub_group_size(WARP_SIZE)]] {
+                const int row = item_ct1.get_group(2) * item_ct1.get_local_range(1) + item_ct1.get_local_id(1);
+                if (row >= nrows) return;
+                const int lane = item_ct1.get_local_id(2);
+                const int blocks_per_row = ncols / QK2_0;
+                const block_q2_0 * x = (const block_q2_0 *) vx;
+                const block_q8_1 * y = (const block_q8_1 *) vy;
+                float sum = 0.0f;
+                for (int ib = lane; ib < blocks_per_row; ib += WARP_SIZE) {
+                    sum += vec_dot_q2_0_q8_1_full64(&x[row * blocks_per_row + ib], &y[2 * ib]);
+                }
+#pragma unroll
+                for (int mask = WARP_SIZE / 2; mask > 0; mask >>= 1) {
+                    sum += dpct::permute_sub_group_by_xor(item_ct1.get_sub_group(), sum, mask);
+                }
+                if (lane == 0) dst[row] = sum;
+            });
+    });
+}
 static void mul_mat_vec_q2_0_q8_1_sycl(const void * vx, const void * vy,
                                        float * dst, const int ncols,
                                        const int nrows,
                                        dpct::queue_ptr stream) {
     GGML_ASSERT(ncols % QK2_0 == 0);
+    if (getenv("GGML_SYCL_Q2_FULL64") != nullptr) {
+        mul_mat_vec_q2_0_q8_1_full64_sycl(vx, vy, dst, ncols, nrows, stream);
+        return;
+    }
     const int block_num_y = (nrows + GGML_SYCL_MMV_Y - 1) / GGML_SYCL_MMV_Y;
     const sycl::range<3> block_nums(1, 1, block_num_y);
     const sycl::range<3> block_dims(1, GGML_SYCL_MMV_Y, WARP_SIZE);
