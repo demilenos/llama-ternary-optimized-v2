@@ -102,3 +102,11 @@ resident_weight_bytes=6881280 format=PTQ1_0_SG8_WORDTILE (28 B / 128 weights, no
 
 C:\AI\bonsai2_27b\llama.cpp_sycl_ptq1\build-sycl-ptq1\probe-xmx8-q32\src\bench.cpp SHA256=5D16684431F9E401BB106F68F99BEF9037E147659015F6D1C1CE73F3AC19378F
 C:\AI\bonsai2_27b\llama.cpp_sycl_ptq1\build-sycl-ptq1\probe-xmx8-q32\build\ptq1-sycl-bench.exe SHA256=06BB63ACB898FA52F91A2314D2E93B93248DA20EC930943648B38076914A2195
+wordtile-backend-perf-off.log
+  MUL_MAT(type_a=ptq1_0,type_b=f32,m=10240,n=1,k=5120,bs=[1,1],nr=[1,1],per=[0,1,2,3],k_v=0,o=1,src_overlap=0):                20988 runs -    48.40 us/run - 104.86 MFLOP/run - [1;34m  2.17 TFLOPS[0m
+wordtile-backend-perf-on.log
+  MUL_MAT(type_a=ptq1_0,type_b=f32,m=10240,n=1,k=5120,bs=[1,1],nr=[1,1],per=[0,1,2,3],k_v=0,o=1,src_overlap=0):                16218 runs -    63.63 us/run - 104.86 MFLOP/run - [1;34m  1.65 TFLOPS[0m
+wordtile-specialized-perf.log
+  MUL_MAT(type_a=ptq1_0,type_b=f32,m=10240,n=1,k=5120,bs=[1,1],nr=[1,1],per=[0,1,2,3],k_v=0,o=1,src_overlap=0):                16218 runs -    62.06 us/run - 104.86 MFLOP/run - [1;34m  1.69 TFLOPS[0m
+wordtile-soa-perf.log
+  MUL_MAT(type_a=ptq1_0,type_b=f32,m=10240,n=1,k=5120,bs=[1,1],nr=[1,1],per=[0,1,2,3],k_v=0,o=1,src_overlap=0):                16218 runs -    62.77 us/run - 104.86 MFLOP/run - [1;34m  1.67 TFLOPS[0m

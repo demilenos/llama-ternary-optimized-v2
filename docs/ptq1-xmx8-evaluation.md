@@ -116,3 +116,47 @@ readback, prefill and fused FFN consumers and the 6 GB resident-weight cap.
 
 Local source: `build-sycl-ptq1/probe-xmx8-q32/src/bench.cpp`.
 Local logs: `build-sycl-ptq1/profile-ops/localreduce-*.log`.
+
+## Backend integration result: rejected
+
+An opt-in production candidate used the same-size host transpose on upload,
+canonical inverse readback, partial/async transfer hooks, copy fallback,
+ordinary MMVQ and fused gate/up kernels. The GPU weight allocation was not
+duplicated. Full/partial/async/view/copy byte checks passed (6 checks), and
+CPU-reference matmul/fusion tests passed (39 + 37 supported cases).
+
+Same-DLL TG128, r3, accepted four optimization flags and runtime settings:
+
+| Resident layout | TG128 tps | Stddev |
+|---|---:|---:|
+| Canonical SG8 |21.993434|0.032404|
+| Word transpose/local reduction |18.245069|0.034014|
+
+Run directories: `20260921-141054-486fa8e2` (OFF),
+`20260921-141121-4f860d30` (ON), under `bench-bonsai2-sycl/`.
+DLL SHA256: `F47EB26A76BB21B7514257BA0262DE71CD79F07A8D9B81BD04292C785D01BCCE`.
+This is a 17.0% real-model regression despite the standalone probe improvement.
+
+The backend M10240/N1/K5120 perf harness measured 48.40 us/run OFF and
+63.63 us/run ON. Compile-time separation of ordinary/fused kernels gave
+62.06 us/run; switching activation storage to the existing contiguous SoA
+quantizer gave 62.77 us/run. Neither closed the gap. The SoA variant again
+passed the transfer and 76 operator checks; it was not claimed as a TG gain.
+Final SoA DLL SHA256:
+`135640BEAA197E51F164E810EF621CBC30A6E8963DA02F81063A378267AB44E9`.
+
+Additional controls: canonical-layout local reduction was slower on all four
+model shapes. Lowering the standalone probe from O3 to O2 still measured
+52.344 us SG8 versus 39.791 us transposed main-kernel time, so optimization
+level alone does not explain the backend gap. The cause remains unresolved.
+
+No production candidate is retained. Exact final files, a binary diff and
+candidate DLL are archived under `build-sycl-ptq1/rejected-wordtile/`.
+The prior accepted DLL was restored from a hash-verified backup:
+`F4EB541DEA6107C24217EC898BEDFF1BA53DA302E8BC1008CBA655A68A7C5AD0`.
+Restored PTQ1 matmul/fusion tests pass 76/76. Local evidence uses
+`profile-ops/wordtile-{io,ops,mulmat,backend-perf-*,specialized-perf,soa-*,o2-*,restored-tests}.log`.
+The 30 tps goal remains unmet; standalone improvements must pass this
+real-backend gate before further layout integration is justified.
+
+Restored TG128 r3: 22.106542 +/- 0.006765 tps; run 20260921-142214-a4b954a1.
