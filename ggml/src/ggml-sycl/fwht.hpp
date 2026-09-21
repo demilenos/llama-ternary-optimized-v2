@@ -8,5 +8,7 @@
 // shape is not one this can serve, in which case the caller must fall through to the
 // ordinary mat-mul dispatch.
 bool ggml_sycl_op_fwht(ggml_backend_sycl_context & ctx, const ggml_tensor * src, ggml_tensor * dst);
+bool ggml_sycl_op_fwht_signed(ggml_backend_sycl_context & ctx, const ggml_tensor * src,
+                              const ggml_tensor * signs, ggml_tensor * dst);
 
 #endif  // GGML_SYCL_FWHT_HPP

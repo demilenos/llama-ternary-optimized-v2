@@ -61,6 +61,34 @@ static bool ggml_sycl_should_fuse_mul_mat_glu(const ggml_tensor * gate, const gg
     return true;
 }
 
+bool ggml_sycl_can_fuse_fwht_signed(const ggml_cgraph * cgraph, int i) {
+    if (!g_ggml_sycl_enable_fusion || getenv("GGML_SYCL_FWHT_SIGNED_FUSION") == nullptr ||
+        i + 2 >= cgraph->n_nodes || cgraph->nodes[i]->op != GGML_OP_MUL ||
+        cgraph->nodes[i + 1]->op != GGML_OP_RESHAPE || cgraph->nodes[i + 2]->op != GGML_OP_MUL_MAT) {
+        return false;
+    }
+    if (!ggml_can_fuse_subgraph(cgraph, i, { GGML_OP_MUL, GGML_OP_RESHAPE, GGML_OP_MUL_MAT }, { i + 2 })) {
+        return false;
+    }
+    const ggml_tensor * mul = cgraph->nodes[i];
+    const ggml_tensor * reshape = cgraph->nodes[i + 1];
+    const ggml_tensor * mm = cgraph->nodes[i + 2];
+    const ggml_tensor * x = mul->src[0];
+    const ggml_tensor * signs = mul->src[1];
+    const ggml_tensor * weights = mm->src[0];
+    const bool shape = x && signs && weights && mm->src[1] == reshape && reshape->src[0] == mul &&
+        ggml_get_op_params_i32(mm, 1) == GGML_HINT_SRC0_IS_HADAMARD &&
+        weights->ne[0] == 1024 && weights->ne[1] == 1024 && weights->ne[2] == 1 && weights->ne[3] == 1 &&
+        ggml_nelements(mm) == ggml_nelements(x) && reshape->ne[0] == 1024 &&
+        x->type == GGML_TYPE_F32 && signs->type == GGML_TYPE_F32 && mul->type == GGML_TYPE_F32 &&
+        mm->type == GGML_TYPE_F32 && signs->ne[1] == 1 && signs->ne[2] == 1 && signs->ne[3] == 1 &&
+        signs->ne[0] == x->ne[0] && signs->ne[0] % 1024 == 0 &&
+        ggml_is_contiguous(x) && ggml_is_contiguous(signs) && ggml_is_contiguous(mul) &&
+        ggml_is_contiguous(reshape) && ggml_is_contiguous(mm);
+    GGML_SYCL_DEBUG("[SYCL] signed FWHT eligibility closure=1 shape=%d name=%s\n",
+                    shape ? 1 : 0, mm->name);
+    return shape;
+}
 bool ggml_sycl_can_fuse(const ggml_cgraph * cgraph, int node_idx, std::initializer_list<enum ggml_op> ops,
                         std::initializer_list<enum ggml_unary_op> unary_ops) {
 #ifndef NDEBUG

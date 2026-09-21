@@ -11,6 +11,8 @@
 // kernel which would service it accepts the tensors involved (types, shapes, contiguity).
 //
 // Lives in its own translation unit because it grows a branch per supported op sequence.
+bool ggml_sycl_can_fuse_fwht_signed(const ggml_cgraph * cgraph, int node_idx);
+
 bool ggml_sycl_can_fuse(const ggml_cgraph * cgraph, int node_idx, std::initializer_list<enum ggml_op> ops,
                         std::initializer_list<enum ggml_unary_op> unary_ops);
 

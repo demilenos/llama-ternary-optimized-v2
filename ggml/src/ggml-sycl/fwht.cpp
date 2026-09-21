@@ -64,7 +64,7 @@ static void fwht_kernel(const float * __restrict__ src, float * __restrict__ dst
 }
 
 static void launch_fwht_1024(const float * src, float * dst, const int64_t n_rows, const float scale,
-                             dpct::queue_ptr stream) {
+                             dpct::queue_ptr stream, const float * signs = nullptr, const int64_t signs_width = 0) {
     constexpr int threads = 256;
     constexpr int elements = 1024;
     const int64_t num_blocks = n_rows;
@@ -78,9 +78,12 @@ static void launch_fwht_1024(const float * src, float * dst, const int64_t n_row
                 const int64_t row = item.get_group(0);
                 const float * row_src = src + row * elements;
                 float * row_dst = dst + row * elements;
+                const float * row_signs = signs ? signs + (row % (signs_width / elements)) * elements : nullptr;
 
                 for (int i = 0; i < elements / threads; ++i) {
-                    scratch[tid + i * threads] = row_src[tid + i * threads] * scale;
+                    const int idx = tid + i * threads;
+                    const float sign = row_signs ? row_signs[idx] : 1.0f;
+                    scratch[idx] = row_src[idx] * sign * scale;
                 }
                 item.barrier(sycl::access::fence_space::local_space);
 
@@ -119,6 +122,19 @@ static void launch_fwht(const float * src, float * dst, const int64_t n_rows, co
                          });
 }
 
+bool ggml_sycl_op_fwht_signed(ggml_backend_sycl_context & ctx, const ggml_tensor * src,
+                              const ggml_tensor * signs, ggml_tensor * dst) {
+    if (src->type != GGML_TYPE_F32 || signs->type != GGML_TYPE_F32 || dst->type != GGML_TYPE_F32 ||
+        src->ne[0] <= 0 || src->ne[0] % 1024 != 0 || dst->ne[0] != 1024 ||
+        signs->ne[0] != src->ne[0] || signs->ne[1] != 1 || signs->ne[2] != 1 || signs->ne[3] != 1 ||
+        !ggml_is_contiguous(src) || !ggml_is_contiguous(signs) || !ggml_is_contiguous(dst) ||
+        ggml_nelements(src) != ggml_nelements(dst)) {
+        return false;
+    }
+    launch_fwht_1024((const float *) src->data, (float *) dst->data, ggml_nelements(src) / 1024,
+                     1.0f / 32.0f, ctx.stream(), (const float *) signs->data, signs->ne[0]);
+    return true;
+}
 bool ggml_sycl_op_fwht(ggml_backend_sycl_context & ctx, const ggml_tensor * src, ggml_tensor * dst) {
     if (src->type != GGML_TYPE_F32 || dst->type != GGML_TYPE_F32) {
         return false;

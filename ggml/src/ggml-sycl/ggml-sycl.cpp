@@ -5757,6 +5757,23 @@ static void ggml_backend_sycl_graph_compute_impl(ggml_backend_sycl_context * syc
             continue;
         }
 
+        if (node->op == GGML_OP_MUL && ggml_sycl_can_fuse_fwht_signed(cgraph, i) &&
+            !ggml_backend_buffer_is_sycl_split(cgraph->nodes[i]->src[0]->buffer) &&
+            !ggml_backend_buffer_is_sycl_split(cgraph->nodes[i]->src[1]->buffer) &&
+            !ggml_backend_buffer_is_sycl_split(cgraph->nodes[i + 2]->src[0]->buffer) &&
+            !ggml_backend_buffer_is_sycl_split(cgraph->nodes[i + 2]->buffer)) {
+            const ggml_tensor * mul = cgraph->nodes[i];
+            const ggml_tensor * signs = mul->src[1];
+            ggml_tensor * dst = cgraph->nodes[i + 2];
+            if (ggml_sycl_op_fwht_signed(*sycl_ctx, mul->src[0], signs, dst)) {
+                GGML_SYCL_DEBUG("[SYCL] signed FWHT fused name=%s rows=%lld signs_width=%lld\n",
+                                dst->name, (long long) (ggml_nelements(mul->src[0]) / 1024),
+                                (long long) signs->ne[0]);
+                i += 2;
+                continue;
+            }
+        }
+
         if (node->op == GGML_OP_MUL_MAT && ggml_sycl_mul_mat_glu_mmvq_fused(*sycl_ctx, cgraph, i)) {
             i += 2;
             continue;

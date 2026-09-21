@@ -248,3 +248,33 @@ Local evidence under `build-sycl-ptq1/profile-ops/`:
 `ptq-fusion-k5120-tests.log`, `ptq-fusion-k5120-sg32-tests.log` (despite the
 filename this records subgroup16), `ptq-fusion-valid-off.json`,
 `ptq-fusion-perf-on.json`, `ptq-fusion-tg1024.json`, and `ptq-fusion-quality/`.
+
+## Signed FWHT fusion
+
+`GGML_SYCL_FWHT_SIGNED_FUSION=1` folds the sign-vector MUL into the 1024-point
+FWHT load for the exact MUL/RESHAPE/hinted-MUL_MAT graph pattern. Consumer
+closure, contiguous F32 tensors, matching sign width and non-split buffers
+are required. Sign rows repeat across tokens; shared intermediates and
+unsupported layouts fall back. Unset the variable to disable this opt-in
+path (presence, including `0`, enables it).
+
+The final DLL passed 33/33 Hadamard CPU-reference tests with actual signed
+fusion dispatch, including multi-token sign repetition. With SG8 and FFN
+fusion explicitly enabled in both runs, clean same-DLL TG128 r3 improved
+from 21.479940 to 22.325428 t/s (stddev 0.036170). TG1024 r3 reached
+21.830764 t/s (stddev 0.003340). Earlier signed-only and diagnostic runs are
+not the combined configuration's performance evidence.
+
+Final server verification used the same DLL with all three opt-ins, graph
+and profiling disabled, context 4096, Q8 K/V, CPU embeddings and
+`--reasoning off`. Temperature-0/seed-1 responses were `4`, `안녕하세요!`,
+and `Jupiter`, all normal stops without reasoning content.
+Add `$env:GGML_SYCL_FWHT_SIGNED_FUSION = '1'` to the preceding benchmark
+example to enable the validated combination. The 30 t/s target is unmet.
+
+DLL SHA256: `8BF1782496D730C18A0F936A9A4C8D7093C915792790167106EF2B6166ECB317`.
+Evidence under `build-sycl-ptq1/profile-ops/`:
+`fwht-signed-parent-final-tests.log`, `fwht-fusion-correct-{off,on,tg1024}.json`
+with matching metadata files, and `fwht-parent-quality/` with explicit
+settings and responses. Earlier failed build/test invocations were not used
+as validation of the final DLL.
