@@ -159,3 +159,19 @@ Measured DLL SHA256:
 The synchronized diagnostic 1024 transform mean fell to 90.49 us versus
 210.44 us in the rejected register-only candidate. This diagnostic mean is
 not normal asynchronous GPU kernel time. The 30 t/s target remains unmet.
+
+## Rejected command-graph experiment
+
+Removing the stale CONCAT compatibility gate allowed real SYCL command-graph
+capture and submission (nine of each in the TG8 diagnostic), and CONCAT CPU
+reference tests passed 192/192. However this A750 runtime reports
+`graph_update_support=0`, so the backend finalizes a fresh executable graph
+on each invocation. A same-DLL TG128 comparison with debug and profiling off
+regressed from 19.894006 t/s (stddev 0.019536, graph off) to 14.273919 t/s
+(stddev 0.171003, graph on). The candidate gate change and temporary markers
+were discarded; the default graph setting remains off.
+
+Logs under `build-sycl-ptq1/profile-ops/`: `graph-markers-tg8.log`,
+`concat-graph-gate.log`, `graph-ab-off-tg128-r3.json`, and
+`graph-ab-on-tg128-r3.json`. Llama's separate `graphs reused` counter was not
+used as evidence of SYCL command-graph replay.
