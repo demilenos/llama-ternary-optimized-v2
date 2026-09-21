@@ -18,3 +18,25 @@ shape M=10240 N=1 K=5120 split_k=1 opt=all
 s2 opt=all verified_rows=10240 verify max_abs=4.76837158e-07 max_ref=2.55861783 status=PASS
 s2 opt=all split_k=1 prep_us=5.417 main_us=281.3015 gemm_us=281.3015 reduce_us=0 total_us=306.823 p95_us=324.604 effective_TFLOPS=0.341752737 gemm_TFLOPS=0.372758766 resident_weight_GBps=37.3792056
 resident_weight_bytes=11468800 format=PTQ1_0_XMX8 (28 B / 128 weights, no expanded resident buffer)
+device=Intel(R) Arc(TM) A750 Graphics
+driver=1.15.39183+4
+shape M=10240 N=1 K=5120 split_k=1 opt=baseline
+sg8 opt=baseline verified_rows=10240 verify max_abs=1.31130219e-06 max_ref=2.55861783 status=PASS
+sg8 opt=baseline split_k=1 prep_us=5.104 main_us=52.188 gemm_us=52.188 reduce_us=0 total_us=71.406 p95_us=86.3593 effective_TFLOPS=1.46847044 gemm_TFLOPS=2.00922818 resident_weight_GBps=160.613954
+resident_weight_bytes=11468800 format=PTQ1_0 (28 B / 128 weights, no expanded resident buffer)
+
+device=Intel(R) Arc(TM) A750 Graphics
+driver=1.15.39183+4
+shape M=10240 N=1 K=5120 split_k=1 opt=baseline
+wordtile_inverse=PASS words=2867200 resident_bytes=11468800
+sg8-wordtile opt=baseline verified_rows=10240 verify max_abs=1.31130219e-06 max_ref=2.55861783 status=PASS
+sg8-wordtile opt=baseline split_k=1 prep_us=5.104 main_us=58.177 gemm_us=58.177 reduce_us=0 total_us=75.8855 p95_us=84.65115 effective_TFLOPS=1.38178703 gemm_TFLOPS=1.80238926 resident_weight_GBps=151.132957
+resident_weight_bytes=11468800 format=PTQ1_0_SG8_WORDTILE (28 B / 128 weights, no expanded resident buffer)
+
+device=Intel(R) Arc(TM) A750 Graphics
+driver=1.15.39183+4
+shape M=10240 N=1 K=5120 split_k=4 opt=baseline
+wordtile_inverse=PASS words=2867200 resident_bytes=11468800
+sg8-wordtile opt=baseline verified_rows=10240 verify max_abs=1.31130219e-06 max_ref=2.55861783 status=PASS
+sg8-wordtile opt=baseline split_k=4 prep_us=5.104 main_us=42.604 gemm_us=42.604 reduce_us=17.604 total_us=92.4475 p95_us=94.3854 effective_TFLOPS=1.13423943 gemm_TFLOPS=2.46121491 resident_weight_GBps=124.057438
+resident_weight_bytes=11468800 format=PTQ1_0_SG8_WORDTILE (28 B / 128 weights, no expanded resident buffer)

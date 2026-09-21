@@ -60,3 +60,30 @@ The original probe is unchanged. Working copy:
 `docs/ptq1-xmx8-evidence.txt`; local original-to-copy patches preserve the
 comparison implementation. This synthetic repeated-weight probe does not
 establish real-model TG or cold-memory performance.
+
+## Native SG8 word-transpose follow-up
+
+A separate candidate transposes seven uint32 words across eight rows per
+K128 block. It retains 28 bytes/128 weights, allocates only one device weight
+copy, and verifies the inverse transpose byte for byte before upload.
+Review corrected the packed-tail byte index and the split-1 output lane write
+before building and measuring. All 10240 output rows pass CPU verification.
+
+Same A750, shape, Q32 reference, warmup 5 and repeats 30:
+
+| Kernel | Main us | Reduce us | Total us | p95 us |
+|---|---:|---:|---:|---:|
+| SG8 control |52.188|0|71.406|86.3593|
+| Word transpose, split 1 |58.177|0|75.8855|84.65115|
+| Word transpose, split 4 |42.604|17.604|92.4475|94.3854|
+
+Each mode uses 11468800 resident weight bytes; max absolute error is
+1.31130219e-6. Split 4 adds 163840 bytes of partial-output scratch.
+The split-4 main kernel improves but reduction/dispatch overhead loses the
+end-to-end advantage. Neither candidate is integrated into the main backend.
+These short synthetic runs do not prove behavior at other shapes or contexts.
+
+Local logs: `build-sycl-ptq1/profile-ops/wordtile-*.log`.
+The accepted backend remains unchanged: 37/37 PTQ regression cases passed,
+and TG128 r3 measured 22.469788 +/- 0.075421 tps in
+`bench-bonsai2-sycl/20260921-133659-39053a89` (30 tps remains unmet).
