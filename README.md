@@ -1,4 +1,17 @@
-# llama.cpp
+# Llama ternary optimized v2
+
+Bonsai2 PTQ1 inference optimizations for the Intel Arc A750 SYCL backend,
+based on the PrismML fork of llama.cpp. GPU-resident weights must remain
+within 6 GB to leave space for context, runtime and scratch on the 8 GB GPU.
+
+- [Windows SYCL build instructions](docs/sycl-ptq1-bonsai2.md)
+- [Validated performance, opt-in flags and memory measurements](docs/sycl-ptq1-performance.md)
+
+The latest validated configuration reaches about 22.4 tokens/s at TG128;
+the 30 tokens/s target has not been reached. Model files and local build
+artifacts are excluded from this repository.
+
+## Upstream llama.cpp information
 
 > [!IMPORTANT]
 > **This is the PrismML fork of llama.cpp**, the main line behind the [Bonsai](https://huggingface.co/collections/prism-ml/bonsai) models (branch `prism`, developed as `prism-v7`). It tracks current mainline llama.cpp and adds the fork's low-bit formats and runtime features on top.
