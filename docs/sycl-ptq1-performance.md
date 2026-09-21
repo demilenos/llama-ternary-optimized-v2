@@ -322,3 +322,54 @@ DLL SHA256: `DFBACB0A3BD1B200504147F69291270624945C4920CA83BEF4176B4F7C98CDF8`.
 The rejected implementation is archived locally as exact file copies and
 `rejected-fwht-q8/experiment.patch`. Earlier failed build/usage logs are
 not validation evidence.
+
+## A750 memory constraint
+
+The user requires GPU-resident weights to stay at or below 6,000,000,000
+bytes within the A750's 8 GB VRAM; context, recurrent state, runtime and
+scratch must fit in the remaining budget. Weight expansion is not an
+acceptable route to the TG target. Other-device offload is acceptable only
+when matched TG measurements show no performance loss.
+
+The existing original-PTQ1 SYCL loader log reports 5395.33 MiB on SYCL0
+(approximately 5.6574 GB) and 265.23 MiB CPU-mapped embeddings. This is a
+model-buffer allocation, not measured whole-adapter residency or a VRAM
+peak. Source: `build-sycl-ptq1/profile-ops/ptq-original/tg8-profile.stderr.log`.
+Context-dependent KV/recurrent/compute allocations and driver/pool peaks
+must be recorded separately; older Vulkan peak measurements do not verify
+the current SYCL configuration.
+
+Current SYCL server check at context 4096, four default slots, Q8 K/V,
+batch/ubatch 512 and CPU embeddings: model 5395.33 MiB, KV 136.00 MiB,
+recurrent state 598.50 MiB, GPU compute 138.28 MiB (host compute 24.28 MiB).
+The SSM-SiLU candidate and three prior optimizations were enabled. Nine
+valid adapter-dedicated counter samples during a completion gave a peak
+of 6913.13 MiB (about 7.25 GB); there were no failed samples. This includes
+the adapter's runtime allocations but does not bound unsampled or load-time
+peaks, nor validate larger contexts. The sampler's legacy 8098-MiB budget
+field is not used to assert current hardware capacity. Quality responses
+were `4`, `안녕하세요!`, and `Jupiter`, all normal stops. Exact configuration,
+DLL hash and samples are in `docs/sycl-ptq1-memory-evidence.json`.
+
+## SSM convolution + SiLU fusion
+
+`GGML_SYCL_SSM_CONV_SILU_FUSION=1` applies SiLU in the convolution kernel
+for an exact one-consumer SSM_CONV/SiLU graph. Contiguous F32 inputs/output
+and non-split buffers are required; bias and shared intermediates fall back.
+The default is off; unset the variable to disable it (presence enables).
+This adds no weight copy or separately allocated scratch.
+
+The final DLL passed 92/92 SSM_CONV_BIAS_SILU CPU-reference graph tests both
+off and on, including Bonsai's 10240-channel shape and a shared-intermediate
+fallback; five signed-FWHT/PTQ1 integration regressions also passed. Real
+Bonsai inference confirmed dispatch. With the three prior opt-ins enabled,
+the initial TG128 r3 comparison was 22.286537 off / 22.432236 on. A reverse
+order r5 confirmation measured 22.398693 on (stddev 0.025962) and 22.278332
+off (stddev 0.032570), a modest 0.54% gain. TG1024 r3 with fusion enabled
+was 22.008939 t/s (stddev 0.012994). All exits were 0. The 30 t/s target
+remains unmet. Quality and memory checks are recorded above.
+
+DLL SHA256: `C4A53CF80CECFD4D3E02214FF1FDF3A180B475D1CCE96BDA0A74976CD3C9A490`.
+Evidence: `build-sycl-ptq1/profile-ops/ssm-silu-tests-{off,on}.log` and
+`build-sycl-ptq1/bench-bonsai2-sycl/20260921-124032-ad3e606f/` (on r5),
+`20260921-124122-30df5593/` (off r5), `20260921-124227-247147a6/` (TG1024).

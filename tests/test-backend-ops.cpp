@@ -4108,6 +4108,18 @@ struct test_ssm_conv_bias_silu : public test_case {
     }
 };
 
+// Preserve convolution output when another consumer needs it.
+struct test_ssm_conv_silu_shared : public test_ssm_conv_bias_silu {
+    test_ssm_conv_silu_shared()
+        : test_ssm_conv_bias_silu(GGML_TYPE_F32, {4, 10240, 1, 1}, {4, 10240, 1, 1}, false) {}
+
+    std::string vars() override { return test_ssm_conv_bias_silu::vars() + ",shared=1"; }
+    ggml_tensor * build_graph(ggml_context * ctx) override {
+        ggml_tensor * silu = test_ssm_conv_bias_silu::build_graph(ctx);
+        return ggml_add(ctx, silu, silu->src[0]);
+    }
+};
+
 // GGML_OP_SSM_SCAN
 struct test_ssm_scan : public test_case {
     const ggml_type type;
@@ -9268,6 +9280,11 @@ static std::vector<std::unique_ptr<test_case>> make_test_cases_eval() {
             }
         }
     }
+
+    // Bonsai2 recurrent-layer channel width and shared-intermediate fallback.
+    test_cases.emplace_back(new test_ssm_conv_bias_silu(
+        GGML_TYPE_F32, {4, 10240, 1, 1}, {4, 10240, 1, 1}, false));
+    test_cases.emplace_back(new test_ssm_conv_silu_shared());
 
     test_cases.emplace_back(new test_ssm_scan(GGML_TYPE_F32, 16, 1, 1024, 1, 32, 4)); // Mamba-1
     test_cases.emplace_back(new test_ssm_scan(GGML_TYPE_F32, 128, 64, 16, 2, 32, 4)); // Mamba-2

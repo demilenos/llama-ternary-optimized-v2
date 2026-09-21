@@ -5744,6 +5744,15 @@ static void ggml_backend_sycl_graph_compute_impl(ggml_backend_sycl_context * syc
                 continue;
             }
         }
+        if (node->op == GGML_OP_SSM_CONV && ggml_sycl_can_fuse_ssm_conv_silu(cgraph, i) &&
+            !ggml_backend_buffer_is_sycl_split(node->src[0]->buffer) &&
+            !ggml_backend_buffer_is_sycl_split(node->src[1]->buffer) &&
+            !ggml_backend_buffer_is_sycl_split(cgraph->nodes[i + 1]->buffer)) {
+            ggml_sycl_ssm_conv_silu(*sycl_ctx, node, cgraph->nodes[i + 1]);
+            GGML_SYCL_DEBUG("[SYCL] SSM_CONV SILU fused name=%s\n", cgraph->nodes[i + 1]->name);
+            i++;
+            continue;
+        }
         if (node->op == GGML_OP_RMS_NORM &&
             ggml_sycl_can_fuse(cgraph, i, { GGML_OP_RMS_NORM, GGML_OP_MUL }, {})) {
             ggml_sycl_op_rms_norm_fused(*sycl_ctx, node, cgraph->nodes[i + 1]);

@@ -1,10 +1,12 @@
 #include "ssm_conv.hpp"
 #include "common.hpp"
+#include "element_wise.hpp"
 
 #include <cstdio>
 
 using namespace sycl;
 
+template <bool FuseSilu>
 static void kernel_ssm_conv(
     queue &q,
     const float *src_data,
@@ -61,15 +63,19 @@ static void kernel_ssm_conv(
                     static_cast<size_t>(token) * static_cast<size_t>(dst_stride_token) +
                     static_cast<size_t>(channel);
 
+                if constexpr (FuseSilu) {
+                    sumf = op_silu(sumf);
+                }
                 dst_data[dst_idx] = sumf;
             }
         );
     });
 }
 
-inline void ggml_sycl_op_ssm_conv(ggml_backend_sycl_context & ctx, ggml_tensor * dst) {
-    ggml_tensor * src0 = dst->src[0];
-    ggml_tensor * src1 = dst->src[1];
+template <bool FuseSilu>
+inline void ggml_sycl_op_ssm_conv(ggml_backend_sycl_context & ctx, ggml_tensor * conv_dst, ggml_tensor * dst) {
+    ggml_tensor * src0 = conv_dst->src[0];
+    ggml_tensor * src1 = conv_dst->src[1];
 
     GGML_ASSERT(src0->type == GGML_TYPE_F32);
     GGML_ASSERT(src1->type == GGML_TYPE_F32);
@@ -108,7 +114,7 @@ inline void ggml_sycl_op_ssm_conv(ggml_backend_sycl_context & ctx, ggml_tensor *
 
         GGML_ASSERT(src_data && weights && dst_data);
 
-        kernel_ssm_conv(
+        kernel_ssm_conv<FuseSilu>(
             *q,
             src_data,
             weights,
@@ -132,5 +138,10 @@ inline void ggml_sycl_op_ssm_conv(ggml_backend_sycl_context & ctx, ggml_tensor *
 
 void ggml_sycl_ssm_conv(ggml_backend_sycl_context & ctx, ggml_tensor * dst) {
     scope_op_debug_print scope_dbg_print(__func__, dst, /*num_src=*/2);
-    ggml_sycl_op_ssm_conv(ctx, dst);
+    ggml_sycl_op_ssm_conv<false>(ctx, dst, dst);
+}
+
+void ggml_sycl_ssm_conv_silu(ggml_backend_sycl_context & ctx, ggml_tensor * conv_dst, ggml_tensor * dst) {
+    scope_op_debug_print scope_dbg_print(__func__, conv_dst, /*num_src=*/1);
+    ggml_sycl_op_ssm_conv<true>(ctx, conv_dst, dst);
 }

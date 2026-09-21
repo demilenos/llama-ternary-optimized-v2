@@ -1,0 +1,177 @@
+{
+  "configuration": {
+    "debug": 0,
+    "SSM": true,
+    "weightLimitBytes": 6000000000,
+    "signedFWHT": 1,
+    "args": [
+      "-m",
+      "C:\\AI\\bonsai2_27b\\Ternary-Bonsai-2-27B-PTQ1_0.gguf",
+      "-c",
+      "4096",
+      "-ngl",
+      "99",
+      "--device",
+      "SYCL0",
+      "-b",
+      "512",
+      "-ub",
+      "512",
+      "-ctk",
+      "q8_0",
+      "-ctv",
+      "q8_0",
+      "-ot",
+      "token_embd.weight=CPU",
+      "--host",
+      "127.0.0.1",
+      "--port",
+      "19931",
+      "--reasoning",
+      "off",
+      "-v"
+    ],
+    "SG8": 1,
+    "graph": 0,
+    "FFN": 1,
+    "profile": 0,
+    "dllSha": "C4A53CF80CECFD4D3E02214FF1FDF3A180B475D1CCE96BDA0A74976CD3C9A490"
+  },
+  "gpuModelMiB": 5395.33,
+  "cpuMappedModelMiB": 265.23,
+  "gpuKvMiB": 136.0,
+  "gpuRecurrentMiB": 598.5,
+  "gpuComputeMiB": 138.28,
+  "hostComputeMiB": 24.28,
+  "serverSlots": 4,
+  "memoryMeasurement": "Adapter dedicated usage sampled during one completion after warmup; excludes load-time and unsampled peaks",
+  "peakDedicatedMiB": 6913.13,
+  "validSamples": 9,
+  "failedSamples": 0,
+  "counterPath": "\\GPU Adapter Memory(*)\\Dedicated Usage",
+  "samples": [
+    {
+      "TimeMs": 1017.33,
+      "CounterTimestamp": "2026-09-21T12:39:52.417623+09:00",
+      "Phase": "request",
+      "DedicatedMiB": 6912.69140625,
+      "Instances": [
+        {
+          "Instance": "luid_0x00000000_0x000133e2_phys_0",
+          "DedicatedMiB": 6912.69140625
+        }
+      ]
+    },
+    {
+      "TimeMs": 2209.18,
+      "CounterTimestamp": "2026-09-21T12:39:53.6106959+09:00",
+      "Phase": "request",
+      "DedicatedMiB": 6912.69140625,
+      "Instances": [
+        {
+          "Instance": "luid_0x00000000_0x000133e2_phys_0",
+          "DedicatedMiB": 6912.69140625
+        }
+      ]
+    },
+    {
+      "TimeMs": 3368.81,
+      "CounterTimestamp": "2026-09-21T12:39:54.7704605+09:00",
+      "Phase": "request",
+      "DedicatedMiB": 6913.12890625,
+      "Instances": [
+        {
+          "Instance": "luid_0x00000000_0x000133e2_phys_0",
+          "DedicatedMiB": 6913.12890625
+        }
+      ]
+    },
+    {
+      "TimeMs": 4536.88,
+      "CounterTimestamp": "2026-09-21T12:39:55.9386601+09:00",
+      "Phase": "request",
+      "DedicatedMiB": 6913.12890625,
+      "Instances": [
+        {
+          "Instance": "luid_0x00000000_0x000133e2_phys_0",
+          "DedicatedMiB": 6913.12890625
+        }
+      ]
+    },
+    {
+      "TimeMs": 5709.88,
+      "CounterTimestamp": "2026-09-21T12:39:57.1116559+09:00",
+      "Phase": "request",
+      "DedicatedMiB": 6913.12890625,
+      "Instances": [
+        {
+          "Instance": "luid_0x00000000_0x000133e2_phys_0",
+          "DedicatedMiB": 6913.12890625
+        }
+      ]
+    },
+    {
+      "TimeMs": 6882.88,
+      "CounterTimestamp": "2026-09-21T12:39:58.2846778+09:00",
+      "Phase": "request",
+      "DedicatedMiB": 6913.12890625,
+      "Instances": [
+        {
+          "Instance": "luid_0x00000000_0x000133e2_phys_0",
+          "DedicatedMiB": 6913.12890625
+        }
+      ]
+    },
+    {
+      "TimeMs": 8054.39,
+      "CounterTimestamp": "2026-09-21T12:39:59.4560832+09:00",
+      "Phase": "request",
+      "DedicatedMiB": 6913.12890625,
+      "Instances": [
+        {
+          "Instance": "luid_0x00000000_0x000133e2_phys_0",
+          "DedicatedMiB": 6913.12890625
+        }
+      ]
+    },
+    {
+      "TimeMs": 9216.11,
+      "CounterTimestamp": "2026-09-21T12:40:00.6174897+09:00",
+      "Phase": "request",
+      "DedicatedMiB": 6913.12890625,
+      "Instances": [
+        {
+          "Instance": "luid_0x00000000_0x000133e2_phys_0",
+          "DedicatedMiB": 6913.12890625
+        }
+      ]
+    },
+    {
+      "TimeMs": 10385.85,
+      "CounterTimestamp": "2026-09-21T12:40:01.787536+09:00",
+      "Phase": "complete",
+      "DedicatedMiB": 6913.12890625,
+      "Instances": [
+        {
+          "Instance": "luid_0x00000000_0x000133e2_phys_0",
+          "DedicatedMiB": 6913.12890625
+        }
+      ]
+    }
+  ],
+  "quality": [
+    {
+      "finish": "stop",
+      "content": "4"
+    },
+    {
+      "finish": "stop",
+      "content": "안녕하세요!"
+    },
+    {
+      "finish": "stop",
+      "content": "Jupiter"
+    }
+  ],
+  "localEvidence": "build-sycl-ptq1/profile-ops/memory-quality-20260921-123933"
+}

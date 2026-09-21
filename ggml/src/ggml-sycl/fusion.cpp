@@ -89,6 +89,25 @@ bool ggml_sycl_can_fuse_fwht_signed(const ggml_cgraph * cgraph, int i) {
                     shape ? 1 : 0, mm->name);
     return shape;
 }
+bool ggml_sycl_can_fuse_ssm_conv_silu(const ggml_cgraph * cgraph, int i) {
+    if (!g_ggml_sycl_enable_fusion || getenv("GGML_SYCL_SSM_CONV_SILU_FUSION") == nullptr ||
+        i + 1 >= cgraph->n_nodes ||
+        !ggml_can_fuse(cgraph, i, { GGML_OP_SSM_CONV, GGML_OP_UNARY }) ||
+        ggml_get_unary_op(cgraph->nodes[i + 1]) != GGML_UNARY_OP_SILU) {
+        return false;
+    }
+    const ggml_tensor * conv = cgraph->nodes[i];
+    const ggml_tensor * silu = cgraph->nodes[i + 1];
+    const ggml_tensor * src0 = conv->src[0];
+    const ggml_tensor * src1 = conv->src[1];
+    const bool shape = src0 && src1 && silu->src[0] == conv &&
+        conv->type == GGML_TYPE_F32 && silu->type == GGML_TYPE_F32 &&
+        src0->type == GGML_TYPE_F32 && src1->type == GGML_TYPE_F32 &&
+        ggml_are_same_shape(conv, silu) && ggml_is_contiguous(src0) &&
+        ggml_is_contiguous(src1) && ggml_is_contiguous(conv) && ggml_is_contiguous(silu);
+    GGML_SYCL_DEBUG("[SYCL] SSM_CONV SILU eligibility shape=%d name=%s\n", shape ? 1 : 0, silu->name);
+    return shape;
+}
 bool ggml_sycl_can_fuse(const ggml_cgraph * cgraph, int node_idx, std::initializer_list<enum ggml_op> ops,
                         std::initializer_list<enum ggml_unary_op> unary_ops) {
 #ifndef NDEBUG
