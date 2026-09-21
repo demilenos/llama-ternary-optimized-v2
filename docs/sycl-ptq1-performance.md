@@ -112,3 +112,25 @@ A current f65354d server with `--reasoning off`, `-ngl 99`, and the Bonsai2
 PTQ1 model answered the fixed request `What is 2 + 2? Answer with only the
 number.` with content `4` and finish reason `stop`. The preserved response is
 `build-sycl-ptq1/quality/sycl-quality-response-final.json`.
+
+## Optional synchronized operation profiling
+
+`GGML_SYCL_PROFILE_OPS=1` logs each executed operation scope, including fused
+paths charged to their first node. With `llama-bench`, add `-v` to enable logs.
+The graph number is an invocation counter. All initialized context queues are
+waited before the timer and after submission; profiling disables SYCL graph
+capture. These are synchronized host wall times, including submission and wait
+overhead, not GPU event times or production throughput. The default is off.
+
+TG8 diagnostic artifacts: `build-sycl-ptq1/profile-ops/tg8-on-verbose.log`
+and parsed `tg8-ops.csv`. Excluding startup, the final four decode invocations
+(5 through 8) attribute 249616 us to PTQ1 MUL_MAT scopes and 153261 us to F32
+MUL_MAT scopes. Of the latter, 133394 us is repeated 1024x1024 transforms with
+5, 6, or 17 right-hand columns. The existing FWHT dispatcher stopped at 512,
+so the 1024 Hadamard transform is the next measured optimization candidate.
+Synchronization strongly magnifies small-operation costs; these totals must
+not be interpreted as fractions of normal asynchronous token latency.
+
+Default-off validation passed all 39 SYCL0 PTQ1 cases in
+`build-sycl-ptq1/profile-ops/ptq1-default-off.log`. The matched TG128 rerun is
+`build-sycl-ptq1/bench-bonsai2-sycl/20260921-091442-20216588/`.

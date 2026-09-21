@@ -11,6 +11,8 @@
 //
 
 #include <algorithm>
+#include <chrono>
+#include <exception>
 #include <array>
 #include <assert.h>
 #include <atomic>
@@ -5640,8 +5642,50 @@ static int ggml_sycl_try_gdn_cache_fusion(const ggml_cgraph * cgraph, int node_i
     return skip;
 }
 
+static void ggml_sycl_profile_wait_all(ggml_backend_sycl_context & ctx) {
+    for (int d = 0; d < GGML_SYCL_MAX_DEVICES; ++d) {
+        for (int s = 0; s < GGML_SYCL_MAX_STREAMS; ++s) {
+            if (ctx.qptrs[d][s] != nullptr) {
+                ctx.qptrs[d][s]->wait_and_throw();
+            }
+        }
+    }
+}
+// Diagnostic synchronized wall time; not device-event time. Fusion is charged
+// to its first node. Queue waits deliberately remove inter-operation overlap.
+struct ggml_sycl_profile_scope {
+    bool enabled;
+    ggml_backend_sycl_context & ctx;
+    const ggml_tensor * node;
+    uint64_t graph_id;
+    int index;
+    std::chrono::steady_clock::time_point start;
+    ggml_sycl_profile_scope(bool enabled, ggml_backend_sycl_context & ctx,
+                            const ggml_tensor * node, uint64_t graph_id, int index)
+        : enabled(enabled), ctx(ctx), node(node), graph_id(graph_id), index(index) {
+        if (enabled) {
+            ggml_sycl_profile_wait_all(ctx);
+            start = std::chrono::steady_clock::now();
+        }
+    }
+    ~ggml_sycl_profile_scope() noexcept(false) {
+        if (!enabled || std::uncaught_exceptions() != 0) return;
+        ggml_sycl_profile_wait_all(ctx);
+        const auto us = std::chrono::duration_cast<std::chrono::microseconds>(
+            std::chrono::steady_clock::now() - start).count();
+        GGML_LOG_INFO("[SYCL-PROFILE] graph=%llu node=%d op=%s src0=%s src_ne=%lldx%lld dst_ne=%lldx%lld us=%lld name=%s\n",
+                      (unsigned long long) graph_id, index, ggml_op_name(node->op),
+                      node->src[0] ? ggml_type_name(node->src[0]->type) : "none",
+                      (long long) (node->src[0] ? node->src[0]->ne[0] : 0),
+                      (long long) (node->src[0] ? node->src[0]->ne[1] : 0),
+                      (long long) node->ne[0], (long long) node->ne[1], (long long) us, node->name);
+    }
+};
 static void ggml_backend_sycl_graph_compute_impl(ggml_backend_sycl_context * sycl_ctx, ggml_cgraph * cgraph) {
     ggml_sycl_set_main_device(sycl_ctx->device);
+    const bool profile_ops = ggml_sycl_get_env("GGML_SYCL_PROFILE_OPS", 0) != 0;
+    static std::atomic<uint64_t> next_profile_graph{0};
+    const uint64_t profile_graph = profile_ops ? next_profile_graph.fetch_add(1) : 0;
 
     for (int i = 0; i < cgraph->n_nodes; i++) {
         ggml_tensor * node = cgraph->nodes[i];
@@ -5652,6 +5696,7 @@ static void ggml_backend_sycl_graph_compute_impl(ggml_backend_sycl_context * syc
             continue;
         }
 
+        ggml_sycl_profile_scope profile(profile_ops, *sycl_ctx, node, profile_graph, i);
         const int nodes_to_skip = ggml_sycl_fuse(*sycl_ctx, cgraph, i);
         if (nodes_to_skip != 0) {
             i += nodes_to_skip;
@@ -5749,7 +5794,7 @@ static ggml_status ggml_backend_sycl_graph_compute(ggml_backend_t backend, ggml_
 
 #ifdef GGML_SYCL_GRAPH
     bool use_sycl_graph = false;
-    if (g_ggml_sycl_enable_graph) {
+    if (g_ggml_sycl_enable_graph && ggml_sycl_get_env("GGML_SYCL_PROFILE_OPS", 0) == 0) {
         use_sycl_graph = check_graph_compatibility(cgraph);
     }
     if (use_sycl_graph) {
