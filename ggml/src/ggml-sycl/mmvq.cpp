@@ -3020,6 +3020,48 @@ static void launch_mul_mat_vec_q_reorder_glu(const void * vx, const void * vgate
     });
 }
 
+template <int SG_SIZE>
+static void launch_ptq1_glu(const void * vx, const void * vgate, const void * vy, float * dst,
+                             const int ncols, const int nrows, dpct::queue_ptr stream) {
+    GGML_ASSERT(ncols % QK_PTQ1_0 == 0);
+    const int block_num_y = (nrows + GGML_SYCL_MMV_Y - 1) / GGML_SYCL_MMV_Y;
+    const sycl::range<3> block_nums(1, 1, block_num_y);
+    const sycl::range<3> block_dims(1, GGML_SYCL_MMV_Y, SG_SIZE);
+    stream->submit([&](sycl::handler & cgh) {
+        cgh.parallel_for(sycl::nd_range<3>(block_nums * block_dims, block_dims),
+            [=](sycl::nd_item<3> item_ct1) [[sycl::reqd_sub_group_size(SG_SIZE)]] {
+                const int row = item_ct1.get_group(2) * item_ct1.get_local_range(1) + item_ct1.get_local_id(1);
+                if (row >= nrows) return;
+                const int lane = item_ct1.get_local_id(2);
+                const int blocks_per_row = ncols / QK_PTQ1_0;
+                const block_ptq1_0 * x_up = (const block_ptq1_0 *) vx;
+                const block_ptq1_0 * x_gate = (const block_ptq1_0 *) vgate;
+                const block_q8_1 * y = (const block_q8_1 *) vy;
+                float up = 0.0f;
+                float gate = 0.0f;
+                for (int ib = lane; ib < blocks_per_row; ib += SG_SIZE) {
+                    const block_q8_1 * yb = y + 4 * ib;
+                    up += vec_dot_ptq1_0_q8_1_full(&x_up[row * blocks_per_row + ib], yb, 0);
+                    gate += vec_dot_ptq1_0_q8_1_full(&x_gate[row * blocks_per_row + ib], yb, 0);
+                }
+                for (int mask = SG_SIZE / 2; mask > 0; mask >>= 1) {
+                    up += dpct::permute_sub_group_by_xor(item_ct1.get_sub_group(), up, mask);
+                    gate += dpct::permute_sub_group_by_xor(item_ct1.get_sub_group(), gate, mask);
+                }
+                if (lane == 0) dst[row] = op_silu(gate) * up;
+            });
+    });
+}
+
+bool ggml_sycl_mul_mat_vec_ptq1_glu(const void * vx, const void * vgate, const void * vy, float * dst,
+                                    int ncols, int nrows, bool use_sg8, dpct::queue_ptr stream) {
+    if (use_sg8) {
+        launch_ptq1_glu<8>(vx, vgate, vy, dst, ncols, nrows, stream);
+    } else {
+        launch_ptq1_glu<WARP_SIZE>(vx, vgate, vy, dst, ncols, nrows, stream);
+    }
+    return true;
+}
 bool ggml_sycl_mul_mat_vec_q_glu_reorder(enum ggml_type src0_type, enum ggml_glu_op glu_op, const void * vx,
                                          const void * vgate, const void * vy, float * dst, int ncols, int nrows,
                                          int ncols_dst, int stride_col_y_bytes, int stride_col_dst,

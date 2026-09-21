@@ -59,6 +59,11 @@ bool ggml_sycl_mul_mat_vec_q_id_reorder(
 
 // Fused dense-FFN GEMV: writes glu(gate . y, up . y) instead of the two mat-vec results.
 // vx / vgate must share shape, stride and reorder layout. Returns false if unhandled.
+bool ggml_sycl_mul_mat_vec_ptq1_glu(
+    const void * vx, const void * vgate, const void * vy, float * dst,
+    int ncols, int nrows, bool use_sg8, dpct::queue_ptr stream);
+
+// Reordered weights must share shape, stride and layout. Returns false if unhandled.
 bool ggml_sycl_mul_mat_vec_q_glu_reorder(
     enum ggml_type     src0_type,
     enum ggml_glu_op   glu_op,

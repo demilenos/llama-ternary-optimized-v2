@@ -29,8 +29,12 @@ static bool ggml_sycl_should_fuse_mul_mat_glu(const ggml_tensor * gate, const gg
         return false;
     }
 
-    // only q4_K has a fused reorder GEMV so far, and it walks whole super-blocks
-    if (wu->type != GGML_TYPE_Q4_K || wu->ne[0] % QK_K != 0) {
+    // Q4_K retains the reorder fusion; opt-in PTQ1 uses the ordinary contiguous GEMV.
+    const bool ptq1_fusion = getenv("GGML_SYCL_PTQ1_FFN_FUSION") != nullptr &&
+        glu_op == GGML_GLU_OP_SWIGLU && wu->type == GGML_TYPE_PTQ1_0 &&
+        wu->ne[0] % QK_PTQ1_0 == 0 && act->ne[1] == 1;
+    const bool q4k_fusion = wu->type == GGML_TYPE_Q4_K && wu->ne[0] % QK_K == 0;
+    if (!q4k_fusion && !ptq1_fusion) {
         return false;
     }
 

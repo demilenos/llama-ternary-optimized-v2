@@ -4618,6 +4618,30 @@ static bool ggml_sycl_mul_mat_glu_mmvq_fused(ggml_backend_sycl_context & ctx, gg
     if (g_ggml_sycl_prioritize_dmmv) {
         return false;
     }
+    // Optional contiguous PTQ1 single-token fusion. Keep the existing reorder path intact.
+    if (getenv("GGML_SYCL_PTQ1_FFN_FUSION") != nullptr &&
+        glu->op == GGML_OP_GLU && ggml_get_glu_op(glu) == GGML_GLU_OP_SWIGLU &&
+        wu->type == GGML_TYPE_PTQ1_0 && wg->type == GGML_TYPE_PTQ1_0 &&
+        wu->ne[0] == wg->ne[0] && wu->ne[1] == wg->ne[1] &&
+        act->type == GGML_TYPE_F32 && act->ne[1] == 1 && act->ne[2] == 1 && act->ne[3] == 1 &&
+        glu->type == GGML_TYPE_F32 && glu->ne[1] == 1 &&
+        ggml_is_contiguous(wu) && ggml_is_contiguous(wg) && ggml_is_contiguous(act) &&
+        !ggml_backend_buffer_is_sycl_split(wu->buffer) && !ggml_backend_buffer_is_sycl_split(wg->buffer)) {
+        const int ncols = (int) wu->ne[0];
+        const int nrows = (int) wu->ne[1];
+        const int padded_cols = GGML_PAD(ncols, MATRIX_ROW_PADDING);
+        ggml_sycl_pool_alloc<char> src1_q8_alloc(ctx.pool(),
+            (size_t) padded_cols * sizeof(block_q8_1) / QK8_1);
+        char * src1_ddq = src1_q8_alloc.get();
+        quantize_row_q8_1_sycl<quantize_q8_1>((const float *) act->data, src1_ddq,
+                                               ncols, 1, padded_cols, ctx.stream());
+        const bool use_sg8 = getenv("GGML_SYCL_PTQ1_SG8") != nullptr;
+        GGML_SYCL_DEBUG("[SYCL] PTQ1_FFN_FUSION dispatch ncols=%d nrows=%d sg=%d\n", ncols, nrows,
+                        use_sg8 ? 8 : WARP_SIZE);
+        scope_op_debug_print scope_dbg_print(__func__, up, /*num_src=*/2, " : PTQ1 fused gate + GLU");
+        return ggml_sycl_mul_mat_vec_ptq1_glu(wu->data, wg->data, src1_ddq,
+                                               (float *) glu->data, ncols, nrows, use_sg8, ctx.stream());
+    }
 
     // install the reorder (SoA) layout the fused kernel needs, as the unfused mmvq path would;
     // a no-op once done. after the bail checks so a declined op does not pay for it.

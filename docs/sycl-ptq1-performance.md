@@ -213,3 +213,38 @@ batch/ubatch 512, and graph/profiling-off settings match earlier measurements.
 DLL SHA256: `9D66C76A755AE3568081CDDCEDDB0FF1DD03E44016E83B9721B72AFAFE8D72E6`.
 Local evidence: `build-sycl-ptq1/profile-ops/ptq-sg8-{build,tests}.log`,
 `ptq-sg8-{off,on,tg1024}.json`, and `ptq-sg8-quality/`.
+
+## PTQ1 gate/up/SwiGLU fusion
+
+With `GGML_SYCL_PTQ1_FFN_FUSION=1`, eligible single-token contiguous PTQ1
+gate/up matmuls share one Q8 activation conversion and write the SwiGLU result
+directly. Eligibility preserves identical activation/weight shape, graph
+consumer closure, unswapped SwiGLU, contiguous F32 output and non-split buffers.
+The default remains opt-in; unset the variable to disable it (`0` is still
+present and therefore enables it). Existing Q4_K fusion remains unchanged.
+
+Actual dispatch was verified before accepting numerical results. The graph
+suite passed 37/37, including production K=5120, for both subgroup8 and the
+build's default subgroup16. Clean same-DLL TG128 r3 with subgroup8 improved
+from 20.940706 to 21.626604 t/s (candidate stddev 0.031351), about 3.3%.
+TG1024 r3 reached 21.196389 t/s (stddev 0.006685). The three saved quality
+prompts passed with `--reasoning off`, normal stops and no reasoning content.
+Earlier runs with an unreachable predicate or debug logging enabled are not
+performance evidence. The 30 t/s target remains unmet.
+
+Enable the validated combination in an initialized oneAPI shell:
+
+```powershell
+$env:GGML_SYCL_PTQ1_SG8 = '1'
+$env:GGML_SYCL_PTQ1_FFN_FUSION = '1'
+$env:GGML_SYCL_ENABLE_GRAPH = '0'
+$env:GGML_SYCL_PROFILE_OPS = '0'
+$env:GGML_SYCL_DEBUG = '0'
+.\scripts\bench-bonsai2-sycl.ps1 -CaseName tg128,tg1024
+```
+
+DLL SHA256: `5B9D7BA092DE8E8C7DAF6158D01351966F17089BB29A6B688C0EE5791857FF29`.
+Local evidence under `build-sycl-ptq1/profile-ops/`:
+`ptq-fusion-k5120-tests.log`, `ptq-fusion-k5120-sg32-tests.log` (despite the
+filename this records subgroup16), `ptq-fusion-valid-off.json`,
+`ptq-fusion-perf-on.json`, `ptq-fusion-tg1024.json`, and `ptq-fusion-quality/`.
