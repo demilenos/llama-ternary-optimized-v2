@@ -190,3 +190,26 @@ No TG1024 run was warranted.
 Evidence under `build-sycl-ptq1/profile-ops/`:
 `build-ptq1-esimd-dp4a-fix.log`, `ptq1-esimd-on-dp4a-fix.log`,
 `ptq1-esimd-off-tg128-r3.json`, and `ptq1-esimd-on-tg128-r3.json`.
+
+## PTQ1 subgroup8 scheduling
+
+An optional single-token launcher keeps the full128 decoder unchanged and
+uses eight lanes per row. This divides the 40 and 136 PTQ1 blocks in the
+5120- and 17408-wide FFN matrices without a half-full final iteration.
+Set `GGML_SYCL_PTQ1_SG8=1`; unset it for the original launcher. The gate
+tests presence, so setting it to `0` also enables it. This requires a device
+supporting subgroup size 8 and was validated on the Intel Arc A750.
+Multi-column dispatch remains unchanged.
+
+Forced PTQ1 CPU-reference tests passed 39/39. Same-DLL TG128 r3 improved
+from 19.874161 t/s to 20.892033 t/s (candidate stddev 0.006450), about 5.1%.
+TG1024 r3 reached 20.548063 t/s (stddev 0.004126). The three saved quality
+prompts returned `4`, `안녕하세요!`, and `Jupiter`, all with normal stops and
+no reasoning content, using `--reasoning off`, temperature 0 and seed 1.
+The 30 t/s target remains unmet.
+
+The original PTQ1 GGUF, SYCL0, GPU layers 99, CPU token embeddings, Q8 K/V,
+batch/ubatch 512, and graph/profiling-off settings match earlier measurements.
+DLL SHA256: `9D66C76A755AE3568081CDDCEDDB0FF1DD03E44016E83B9721B72AFAFE8D72E6`.
+Local evidence: `build-sycl-ptq1/profile-ops/ptq-sg8-{build,tests}.log`,
+`ptq-sg8-{off,on,tg1024}.json`, and `ptq-sg8-quality/`.

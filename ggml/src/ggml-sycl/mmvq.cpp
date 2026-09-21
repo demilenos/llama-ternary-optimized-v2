@@ -1245,10 +1245,42 @@ static __dpct_inline__ float vec_dot_ptq1_0_q8_1_full(
            vec_dot_ptq1_0_q8_1(vbq, y, 2) +
            vec_dot_ptq1_0_q8_1(vbq, y, 3);
 }
+static void mul_mat_vec_ptq1_0_q8_1_sycl_sg8(const void * vx, const void * vy,
+                                              float * dst, const int ncols,
+                                              const int nrows, dpct::queue_ptr stream) {
+    GGML_ASSERT(ncols % QK_PTQ1_0 == 0);
+    const int block_num_y = (nrows + GGML_SYCL_MMV_Y - 1) / GGML_SYCL_MMV_Y;
+    constexpr int sg_size = 8;
+    const sycl::range<3> block_nums(1, 1, block_num_y);
+    const sycl::range<3> block_dims(1, GGML_SYCL_MMV_Y, sg_size);
+    stream->submit([&](sycl::handler & cgh) {
+        cgh.parallel_for(sycl::nd_range<3>(block_nums * block_dims, block_dims),
+            [=](sycl::nd_item<3> item_ct1) [[sycl::reqd_sub_group_size(sg_size)]] {
+                const int row = item_ct1.get_group(2) * item_ct1.get_local_range(1) + item_ct1.get_local_id(1);
+                if (row >= nrows) return;
+                const int lane = item_ct1.get_local_id(2);
+                const int blocks_per_row = ncols / QK_PTQ1_0;
+                const block_ptq1_0 * x = (const block_ptq1_0 *) vx;
+                const block_q8_1 * y = (const block_q8_1 *) vy;
+                float sum = 0.0f;
+                for (int ib = lane; ib < blocks_per_row; ib += sg_size) {
+                    sum += vec_dot_ptq1_0_q8_1_full(&x[row * blocks_per_row + ib], &y[4 * ib], 0);
+                }
+                for (int mask = sg_size / 2; mask > 0; mask >>= 1) {
+                    sum += dpct::permute_sub_group_by_xor(item_ct1.get_sub_group(), sum, mask);
+                }
+                if (lane == 0) dst[row] = sum;
+            });
+    });
+}
 static void mul_mat_vec_ptq1_0_q8_1_sycl(const void * vx, const void * vy,
                                          float * dst, const int ncols,
                                          const int nrows, dpct::queue_ptr stream) {
     GGML_ASSERT(ncols % QK_PTQ1_0 == 0);
+    if (getenv("GGML_SYCL_PTQ1_SG8") != nullptr) {
+        mul_mat_vec_ptq1_0_q8_1_sycl_sg8(vx, vy, dst, ncols, nrows, stream);
+        return;
+    }
     const int block_num_y = (nrows + GGML_SYCL_MMV_Y - 1) / GGML_SYCL_MMV_Y;
     const sycl::range<3> block_nums(1, 1, block_num_y);
     const sycl::range<3> block_dims(1, GGML_SYCL_MMV_Y, WARP_SIZE);
