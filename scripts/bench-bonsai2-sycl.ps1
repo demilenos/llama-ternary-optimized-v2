@@ -82,6 +82,19 @@ $cases = @(
 
 $cases = @($cases | Where-Object { $CaseName -contains $_.Name })
 
+# Persist only the known performance controls; never dump the full environment.
+$runtimeEnvironment = [ordered]@{}
+foreach ($name in @(
+    'GGML_SYCL_PTQ1_SG8', 'GGML_SYCL_PTQ1_FFN_FUSION',
+    'GGML_SYCL_FWHT_SIGNED_FUSION', 'GGML_SYCL_Q2_FULL64',
+    'GGML_SYCL_ENABLE_FUSION', 'GGML_SYCL_ENABLE_GRAPH',
+    'GGML_SYCL_PROFILE_OPS', 'GGML_SYCL_DEBUG',
+    'SYCL_UR_USE_LEVEL_ZERO_V2', 'UR_L0_USE_IMMEDIATE_COMMANDLISTS',
+    'SYCL_PI_LEVEL_ZERO_USE_IMMEDIATE_COMMANDLISTS', 'SYCL_PI_LEVEL_ZERO_BATCH_SIZE'
+)) {
+    $runtimeEnvironment[$name] = [Environment]::GetEnvironmentVariable($name, 'Process')
+}
+
 $results = @()
 foreach ($case in $cases) {
     $args = @($commonArgs + @('-p', "$($case.Prompt)", '-n', "$($case.Generate)"))
@@ -103,6 +116,7 @@ foreach ($case in $cases) {
         binarySha256 = $binarySha256
         syclBackendDll = $syclDll
         syclBackendDllSha256 = $syclDllSha256
+        runtimeEnvironment = $runtimeEnvironment
         gitCommit = $gitCommit
         gitDirty = $gitDirty
         gitStatus = $gitStatus
@@ -124,14 +138,18 @@ foreach ($case in $cases) {
     }
 
     if ($DryRun) {
-        $results += [pscustomobject]@{ case = $case.Name; command = $commandText; exitStatus = $null; stdout = $stdoutPath; stderr = $stderrPath }
+        $results += [pscustomobject]@{ case = $case.Name; command = $commandText; runtimeEnvironment = $runtimeEnvironment; exitStatus = $null; stdout = $stdoutPath; stderr = $stderrPath }
         continue
     }
 
     $psi = [Diagnostics.ProcessStartInfo]::new()
     $psi.FileName = $bench
     $psi.WorkingDirectory = $repoRoot
-    foreach ($arg in $args) { [void]$psi.ArgumentList.Add([string]$arg) }
+    if ($PSVersionTable.PSVersion.Major -ge 6) {
+        foreach ($arg in $args) { [void]$psi.ArgumentList.Add([string]$arg) }
+    } else {
+        $psi.Arguments = $argText
+    }
     $psi.RedirectStandardOutput = $true
     $psi.RedirectStandardError = $true
     $psi.UseShellExecute = $false
@@ -143,7 +161,7 @@ foreach ($case in $cases) {
         $stderr = $proc.StandardError.ReadToEndAsync()
         $finished = if ($TimeoutSeconds -gt 0) { $proc.WaitForExit($TimeoutSeconds * 1000) } else { $proc.WaitForExit(); $true }
         if (-not $finished) {
-            $proc.Kill($true)
+            if ($PSVersionTable.PSVersion.Major -ge 6) { $proc.Kill($true) } else { $proc.Kill() }
             $proc.WaitForExit()
             $exitStatus = 124
         } else {

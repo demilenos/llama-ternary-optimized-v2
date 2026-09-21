@@ -278,3 +278,19 @@ Evidence under `build-sycl-ptq1/profile-ops/`:
 with matching metadata files, and `fwht-parent-quality/` with explicit
 settings and responses. Earlier failed build/test invocations were not used
 as validation of the final DLL.
+
+## Runtime adapter comparison
+
+A same-DLL TG128 r3 comparison with all three PTQ1 optimizations enabled
+measured 22.280382 t/s with `SYCL_UR_USE_LEVEL_ZERO_V2=0` and 8.641881 t/s
+with `=1`. Both exits were 0; graph, profiling and debug were disabled,
+and immediate-command-list variables were unset. V2 is not recommended for
+this validated A750 configuration. The variable is described in Intel's
+[environment documentation](https://intel.github.io/llvm/EnvironmentVariables.html);
+its behavior and performance remain runtime/device-specific.
+
+Evidence: `build-sycl-ptq1/bench-bonsai2-sycl/20260921-115656-449262f4/`
+and `20260921-115734-88f49269/`, including exact environment metadata and
+DLL SHA256. These runs also verified the harness under Windows PowerShell
+5.1. The harness now records a fixed allowlist of relevant performance
+variables and supports both Windows PowerShell and PowerShell 7 process APIs.
