@@ -87,3 +87,32 @@ Local logs: `build-sycl-ptq1/profile-ops/wordtile-*.log`.
 The accepted backend remains unchanged: 37/37 PTQ regression cases passed,
 and TG128 r3 measured 22.469788 +/- 0.075421 tps in
 `bench-bonsai2-sycl/20260921-133659-39053a89` (30 tps remains unmet).
+
+## Four-subgroup local reduction candidate
+
+The follow-up assigns four SG8 subgroups to an eight-row tile. Each subgroup
+handles a contiguous quarter of K; one work-group barrier and 128 bytes of
+local memory combine the partials inside the same kernel. No global partial
+buffer or second weight allocation is needed. The original word transpose
+and 28-byte block size are unchanged.
+
+Reverse-order confirmation (candidate then control), warmup 10, repeats 100,
+N=1, same A750 and Q32 activation reference:
+
+| M | K | SG8 main us | Candidate main us | SG8 total us | Candidate total us |
+|---:|---:|---:|---:|---:|---:|
+|10240|5120|52.6045|39.687|70.4165|56.6145|
+|17408|5120|81.771|58.6455|99.2705|76.823|
+|5120|17408|87.709|77.604|107.4475|96.4585|
+|5120|6144|35.9895|31.9795|53.646|49.6355|
+
+All output rows pass; maximum absolute error across these shapes is
+3.09944153e-6. Byte-exact inverse transpose passes for every shape.
+M=16/N=2/K=640 also passes, exercising multiple columns and uneven K
+partitioning. First-order runs (50 repeats) agree on main-kernel improvement;
+small-shape total timings vary with dispatch gaps. This is promising kernel
+evidence, not a real-model TG result. Backend integration must preserve
+readback, prefill and fused FFN consumers and the 6 GB resident-weight cap.
+
+Local source: `build-sycl-ptq1/probe-xmx8-q32/src/bench.cpp`.
+Local logs: `build-sycl-ptq1/profile-ops/localreduce-*.log`.

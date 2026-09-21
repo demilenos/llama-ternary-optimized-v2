@@ -40,3 +40,65 @@ wordtile_inverse=PASS words=2867200 resident_bytes=11468800
 sg8-wordtile opt=baseline verified_rows=10240 verify max_abs=1.31130219e-06 max_ref=2.55861783 status=PASS
 sg8-wordtile opt=baseline split_k=4 prep_us=5.104 main_us=42.604 gemm_us=42.604 reduce_us=17.604 total_us=92.4475 p95_us=94.3854 effective_TFLOPS=1.13423943 gemm_TFLOPS=2.46121491 resident_weight_GBps=124.057438
 resident_weight_bytes=11468800 format=PTQ1_0_SG8_WORDTILE (28 B / 128 weights, no expanded resident buffer)
+device=Intel(R) Arc(TM) A750 Graphics
+driver=1.15.39183+4
+shape M=10240 N=1 K=5120 split_k=1 opt=baseline
+sg8 opt=baseline verified_rows=10240 verify max_abs=1.31130219e-06 max_ref=2.55861783 status=PASS
+sg8 opt=baseline split_k=1 prep_us=5.104 main_us=52.6045 gemm_us=52.6045 reduce_us=0 total_us=70.4165 p95_us=81.35355 effective_TFLOPS=1.48910554 gemm_TFLOPS=1.99331996 resident_weight_GBps=162.870918
+resident_weight_bytes=11468800 format=PTQ1_0 (28 B / 128 weights, no expanded resident buffer)
+
+device=Intel(R) Arc(TM) A750 Graphics
+driver=1.15.39183+4
+shape M=17408 N=1 K=5120 split_k=1 opt=baseline
+sg8 opt=baseline verified_rows=17408 verify max_abs=1.31130219e-06 max_ref=2.55861783 status=PASS
+sg8 opt=baseline split_k=1 prep_us=5.104 main_us=81.771 gemm_us=81.771 reduce_us=0 total_us=99.2705 p95_us=108.23425 effective_TFLOPS=1.79567868 gemm_TFLOPS=2.17996502 resident_weight_GBps=196.402355
+resident_weight_bytes=19496960 format=PTQ1_0 (28 B / 128 weights, no expanded resident buffer)
+
+device=Intel(R) Arc(TM) A750 Graphics
+driver=1.15.39183+4
+shape M=5120 N=1 K=17408 split_k=1 opt=baseline
+sg8 opt=baseline verified_rows=5120 verify max_abs=2.86102295e-06 max_ref=3.7851963 status=PASS
+sg8 opt=baseline split_k=1 prep_us=6.979 main_us=87.709 gemm_us=87.709 reduce_us=0 total_us=107.4475 p95_us=116.07845 effective_TFLOPS=1.65902343 gemm_TFLOPS=2.03237889 resident_weight_GBps=181.455688
+resident_weight_bytes=19496960 format=PTQ1_0 (28 B / 128 weights, no expanded resident buffer)
+
+device=Intel(R) Arc(TM) A750 Graphics
+driver=1.15.39183+4
+shape M=5120 N=1 K=6144 split_k=1 opt=baseline
+sg8 opt=baseline verified_rows=5120 verify max_abs=1.1920929e-06 max_ref=2.35623217 status=PASS
+sg8 opt=baseline split_k=1 prep_us=5.209 main_us=35.9895 gemm_us=35.9895 reduce_us=0 total_us=53.646 p95_us=62.93265 effective_TFLOPS=1.17277262 gemm_TFLOPS=1.74813654 resident_weight_GBps=128.272005
+resident_weight_bytes=6881280 format=PTQ1_0 (28 B / 128 weights, no expanded resident buffer)
+
+device=Intel(R) Arc(TM) A750 Graphics
+driver=1.15.39183+4
+shape M=10240 N=1 K=5120 split_k=1 opt=baseline
+wordtile_inverse=PASS words=2867200 resident_bytes=11468800
+sg8-wordtile-local opt=baseline verified_rows=10240 verify max_abs=1.31130219e-06 max_ref=2.55861783 status=PASS
+sg8-wordtile-local opt=baseline split_k=1 prep_us=5.104 main_us=39.687 gemm_us=39.687 reduce_us=0 total_us=56.6145 p95_us=65.93705 effective_TFLOPS=1.85213329 gemm_TFLOPS=2.64211455 resident_weight_GBps=202.577078
+resident_weight_bytes=11468800 format=PTQ1_0_SG8_WORDTILE (28 B / 128 weights, no expanded resident buffer)
+
+device=Intel(R) Arc(TM) A750 Graphics
+driver=1.15.39183+4
+shape M=17408 N=1 K=5120 split_k=1 opt=baseline
+wordtile_inverse=PASS words=4874240 resident_bytes=19496960
+sg8-wordtile-local opt=baseline verified_rows=17408 verify max_abs=1.31130219e-06 max_ref=2.55861783 status=PASS
+sg8-wordtile-local opt=baseline split_k=1 prep_us=5.104 main_us=58.6455 gemm_us=58.6455 reduce_us=0 total_us=76.823 p95_us=91.1149 effective_TFLOPS=2.32037176 gemm_TFLOPS=3.03958394 resident_weight_GBps=253.790662
+resident_weight_bytes=19496960 format=PTQ1_0_SG8_WORDTILE (28 B / 128 weights, no expanded resident buffer)
+
+device=Intel(R) Arc(TM) A750 Graphics
+driver=1.15.39183+4
+shape M=5120 N=1 K=17408 split_k=1 opt=baseline
+wordtile_inverse=PASS words=4874240 resident_bytes=19496960
+sg8-wordtile-local opt=baseline verified_rows=5120 verify max_abs=3.09944153e-06 max_ref=3.7851963 status=PASS
+sg8-wordtile-local opt=baseline split_k=1 prep_us=6.979 main_us=77.604 gemm_us=77.604 reduce_us=0 total_us=96.4585 p95_us=105.01565 effective_TFLOPS=1.84802708 gemm_TFLOPS=2.29701974 resident_weight_GBps=202.127962
+resident_weight_bytes=19496960 format=PTQ1_0_SG8_WORDTILE (28 B / 128 weights, no expanded resident buffer)
+
+device=Intel(R) Arc(TM) A750 Graphics
+driver=1.15.39183+4
+shape M=5120 N=1 K=6144 split_k=1 opt=baseline
+wordtile_inverse=PASS words=1720320 resident_bytes=6881280
+sg8-wordtile-local opt=baseline verified_rows=5120 verify max_abs=1.1920929e-06 max_ref=2.35623217 status=PASS
+sg8-wordtile-local opt=baseline split_k=1 prep_us=5.209 main_us=31.9795 gemm_us=31.9795 reduce_us=0 total_us=49.6355 p95_us=58.334 effective_TFLOPS=1.2675315 gemm_TFLOPS=1.96734033 resident_weight_GBps=138.636258
+resident_weight_bytes=6881280 format=PTQ1_0_SG8_WORDTILE (28 B / 128 weights, no expanded resident buffer)
+
+C:\AI\bonsai2_27b\llama.cpp_sycl_ptq1\build-sycl-ptq1\probe-xmx8-q32\src\bench.cpp SHA256=5D16684431F9E401BB106F68F99BEF9037E147659015F6D1C1CE73F3AC19378F
+C:\AI\bonsai2_27b\llama.cpp_sycl_ptq1\build-sycl-ptq1\probe-xmx8-q32\build\ptq1-sycl-bench.exe SHA256=06BB63ACB898FA52F91A2314D2E93B93248DA20EC930943648B38076914A2195
