@@ -134,3 +134,28 @@ not be interpreted as fractions of normal asynchronous token latency.
 Default-off validation passed all 39 SYCL0 PTQ1 cases in
 `build-sycl-ptq1/profile-ops/ptq1-default-off.log`. The matched TG128 rerun is
 `build-sycl-ptq1/bench-bonsai2-sycl/20260921-091442-20216588/`.
+
+## Shared-memory FWHT1024
+
+The first attempt extending the subgroup/register FWHT to 1024 passed 33/33
+Hadamard cases but regressed TG128 to 13.262185 t/s (stddev 0.018270).
+It was replaced with a 256-thread workgroup per row using 4 KiB local memory
+and a barrier after each butterfly stage. The existing 64–512 paths remain
+unchanged. Existing Hadamard tests, including signed 1024 transforms and
+non-multiple row counts, pass 33/33 on SYCL0 against CPU reference.
+
+With profiling off and the same Q8 caches, offload and embedding settings:
+
+| Case | Mean tokens/s | Stddev |
+| --- | ---: | ---: |
+| TG128, 3 repeats | 19.942413 | 0.007598 |
+| TG1024, 3 repeats | 19.556190 | 0.030401 |
+
+Evidence is under `build-sycl-ptq1/profile-ops/`: `build-fwht1024-local.log`,
+`hadamard-1024-local.log`, `fwht-local-tg128-r3-off.log`,
+`fwht-local-tg1024-r3-off.log`, and `fwht-local-tg8-on-verbose.log`.
+Measured DLL SHA256:
+`4A10F587C1A5C55795BD7025631E304A71F7EDB23F4B257E38D97597E01DCF70`.
+The synchronized diagnostic 1024 transform mean fell to 90.49 us versus
+210.44 us in the rejected register-only candidate. This diagnostic mean is
+not normal asynchronous GPU kernel time. The 30 t/s target remains unmet.

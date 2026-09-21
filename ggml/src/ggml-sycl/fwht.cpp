@@ -63,6 +63,45 @@ static void fwht_kernel(const float * __restrict__ src, float * __restrict__ dst
     }
 }
 
+static void launch_fwht_1024(const float * src, float * dst, const int64_t n_rows, const float scale,
+                             dpct::queue_ptr stream) {
+    constexpr int threads = 256;
+    constexpr int elements = 1024;
+    const int64_t num_blocks = n_rows;
+
+    stream->submit([&](sycl::handler & cgh) {
+        sycl::local_accessor<float, 1> scratch(sycl::range<1>(elements), cgh);
+        cgh.parallel_for(
+            sycl::nd_range<1>(sycl::range<1>(num_blocks * threads), sycl::range<1>(threads)),
+            [=](sycl::nd_item<1> item) {
+                const int tid = item.get_local_id(0);
+                const int64_t row = item.get_group(0);
+                const float * row_src = src + row * elements;
+                float * row_dst = dst + row * elements;
+
+                for (int i = 0; i < elements / threads; ++i) {
+                    scratch[tid + i * threads] = row_src[tid + i * threads] * scale;
+                }
+                item.barrier(sycl::access::fence_space::local_space);
+
+                for (int h = 1; h < elements; h *= 2) {
+                    for (int pair = tid; pair < elements / 2; pair += threads) {
+                        const int lo = (pair / h) * (2 * h) + (pair % h);
+                        const int hi = lo + h;
+                        const float x = scratch[lo];
+                        const float y = scratch[hi];
+                        scratch[lo] = x + y;
+                        scratch[hi] = x - y;
+                    }
+                    item.barrier(sycl::access::fence_space::local_space);
+                }
+
+                for (int i = 0; i < elements / threads; ++i) {
+                    row_dst[tid + i * threads] = scratch[tid + i * threads];
+                }
+            });
+    });
+}
 template <int N>
 static void launch_fwht(const float * src, float * dst, const int64_t n_rows, const float scale,
                         dpct::queue_ptr stream) {
@@ -112,6 +151,9 @@ bool ggml_sycl_op_fwht(ggml_backend_sycl_context & ctx, const ggml_tensor * src,
             return true;
         case 512:
             launch_fwht<512>(src_d, dst_d, rows, scale, stream);
+            return true;
+        case 1024:
+            launch_fwht_1024(src_d, dst_d, rows, scale, stream);
             return true;
         default:
             return false;
