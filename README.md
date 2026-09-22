@@ -1,15 +1,31 @@
 # Llama ternary optimized v2
 
-Bonsai2 PTQ1 inference optimizations for the Intel Arc A750 SYCL backend,
+Bonsai2 PTQ1 inference optimizations for the **Intel Arc A750 SYCL backend**,
 based on the PrismML fork of llama.cpp. GPU-resident weights must remain
 within 6 GB to leave space for context, runtime and scratch on the 8 GB GPU.
 
+This repository is also intended to be discoverable as prior art for
+**ternary LLM inference, 1.58-bit-class / ultra-low-bit LLMs, packed ternary
+weights, post-training ternarization, low-bit GEMV/GEMM, Intel Arc inference,
+Intel XMX/DPAS, DP4A-style dot products, oneAPI SYCL, and llama.cpp Intel GPU
+optimization**. PTQ1 is the local packed ternary format; "1.58-bit" is an
+adjacent search term, not a claim about PTQ1's exact serialized bits-per-weight.
+
+### Research and agent entry points
+
+- **[Ternary LLM optimization research index](docs/ternary-llm-optimization-index.md)** — terminology, architecture map and canonical evidence.
+- **[Coding-agent guide](docs/TERNARY_AGENT_GUIDE.md)** — invariants, repository triage and the optimization acceptance loop.
+- **[Negative-results index](docs/negative-results-index.md)** — measured dead ends and conditions under which they may be worth reopening.
 - [Windows SYCL build instructions](docs/sycl-ptq1-bonsai2.md)
 - [Validated performance, opt-in flags and memory measurements](docs/sycl-ptq1-performance.md)
+- [PTQ1 XMX8 / word-layout evaluation](docs/ptq1-xmx8-evaluation.md)
+- [Lossless PTQ1 -> Q2_0 repacking](docs/lossless-ptq1-repack.md)
 
-The latest validated configuration reaches about 23.5 tokens/s at TG128;
-the 30 tokens/s target has not been reached. Model files and local build
-artifacts are excluded from this repository.
+The latest documented accepted A750 configuration reaches about **23.5 tokens/s
+at TG128** in the matched BF16-WG256 experiment; the 30 tokens/s target has not
+been reached. Treat the performance document as canonical for current flags and
+measurement scope. Model files and local build artifacts are excluded from this
+repository.
 
 ## Upstream llama.cpp information
 
